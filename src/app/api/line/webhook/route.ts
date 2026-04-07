@@ -110,14 +110,16 @@ async function handleEvent(event: any) {
     let result: Awaited<ReturnType<typeof analyzeScreenshot>>;
     try {
       result = await analyzeScreenshot(imageBuffer);
-    } catch {
+    } catch (e: any) {
+      const errMsg = e?.message ?? e?.toString() ?? "Claude解析エラー";
+      console.error("analyzeScreenshot error:", errMsg);
       await supabase.from("line_parse_logs").insert({
         client_id: client.id,
         line_message_id: message.id,
         app_type: "unknown",
         raw_json: null,
         status: "failed",
-        error_message: "Claude解析エラー",
+        error_message: errMsg,
       });
       await replyMessage(replyToken, "画像の解析に失敗しました。もう一度送ってください。");
       return;

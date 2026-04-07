@@ -76,8 +76,18 @@ export type AnalyzeResult =
 export type AskenResult = MealResult;
 export type KintoreResult = TrainingResult;
 
+function detectMediaType(buffer: ArrayBuffer): "image/jpeg" | "image/png" | "image/gif" | "image/webp" {
+  const bytes = new Uint8Array(buffer.slice(0, 4));
+  if (bytes[0] === 0xff && bytes[1] === 0xd8) return "image/jpeg";
+  if (bytes[0] === 0x89 && bytes[1] === 0x50) return "image/png";
+  if (bytes[0] === 0x47 && bytes[1] === 0x49) return "image/gif";
+  if (bytes[0] === 0x52 && bytes[1] === 0x49) return "image/webp";
+  return "image/jpeg"; // fallback
+}
+
 export async function analyzeScreenshot(imageBuffer: ArrayBuffer): Promise<AnalyzeResult> {
   const base64 = Buffer.from(imageBuffer).toString("base64");
+  const mediaType = detectMediaType(imageBuffer);
 
   const prompt = `このフィットネス・健康管理アプリのスクリーンショットを解析してください。
 
@@ -204,7 +214,7 @@ JSON以外のテキストは絶対に含めないでください。
         content: [
           {
             type: "image",
-            source: { type: "base64", media_type: "image/jpeg", data: base64 },
+            source: { type: "base64", media_type: mediaType, data: base64 },
           },
           { type: "text", text: prompt },
         ],
