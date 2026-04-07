@@ -1,0 +1,10 @@
+@import "tailwindcss";
+
+:root {
+  --medifit-green: #4ade80;
+  --medifit-teal: #2dd4bf;
+}
+
+body {
+  font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+}
