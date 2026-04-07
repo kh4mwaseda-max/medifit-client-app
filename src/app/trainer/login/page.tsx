@@ -30,34 +30,42 @@ export default function TrainerLogin() {
   };
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center p-8 bg-gray-950">
+    <main className="min-h-screen flex flex-col items-center justify-center p-8 bg-[#0a0a0f]">
       <div className="w-full max-w-sm space-y-8">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-white">medifit</h1>
-          <p className="mt-2 text-gray-400">トレーナー管理画面</p>
+
+        {/* ロゴ */}
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center shadow-xl shadow-emerald-900/40">
+            <span className="text-black text-xl font-black leading-none">A</span>
+          </div>
+          <div className="text-center">
+            <h1 className="text-xl font-bold text-white tracking-tight">AllYourFit</h1>
+            <p className="mt-1 text-sm text-gray-500">トレーナー管理画面</p>
+          </div>
         </div>
 
+        {/* フォーム */}
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm text-gray-400 mb-2">パスワード</label>
+          <div className="space-y-1.5">
+            <label className="block text-xs text-gray-500">パスワード</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-green-400"
+              className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3.5 text-white focus:outline-none focus:border-emerald-500/60 transition-colors text-sm"
               placeholder="••••••••"
               autoFocus
             />
           </div>
 
           {error && (
-            <p className="text-red-400 text-sm text-center">パスワードが正しくありません</p>
+            <p className="text-rose-400 text-sm text-center">パスワードが正しくありません</p>
           )}
 
           <button
             type="submit"
             disabled={!password || loading}
-            className="w-full bg-green-500 hover:bg-green-400 disabled:bg-gray-700 disabled:text-gray-500 text-black font-semibold py-3 rounded-xl transition-colors"
+            className="w-full bg-emerald-500 hover:bg-emerald-400 disabled:bg-white/5 disabled:text-gray-600 text-black font-semibold py-3.5 rounded-2xl transition-colors text-sm"
           >
             {loading ? "確認中..." : "ログイン"}
           </button>

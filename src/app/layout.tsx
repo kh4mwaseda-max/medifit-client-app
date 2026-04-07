@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "medifit | あなたの進捗レポート",
+  title: "AllYourFit | あなたの進捗レポート",
   description: "パーソナルトレーナーからの進捗レポート",
 };
 

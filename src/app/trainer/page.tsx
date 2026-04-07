@@ -16,50 +16,56 @@ export default async function TrainerDashboard() {
     .order("created_at", { ascending: false });
 
   return (
-    <div className="min-h-screen bg-gray-950">
-      <header className="border-b border-gray-800 px-6 py-4 flex items-center justify-between">
-        <div>
-          <h1 className="text-lg font-bold text-white">medifit</h1>
-          <p className="text-sm text-gray-400">トレーナー管理画面</p>
+    <div className="min-h-screen bg-[#0a0a0f]">
+
+      {/* ヘッダー */}
+      <header className="border-b border-white/5 px-5 py-4 flex items-center justify-between sticky top-0 bg-[#0a0a0f]/90 backdrop-blur-sm z-10">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center shadow-lg shadow-emerald-900/40">
+            <span className="text-black text-sm font-black leading-none">A</span>
+          </div>
+          <div>
+            <p className="text-white font-bold text-sm leading-none">AllYourFit</p>
+            <p className="text-[11px] text-gray-500 leading-none mt-0.5">トレーナー管理画面</p>
+          </div>
         </div>
         <LogoutButton />
       </header>
 
-      <main className="max-w-2xl mx-auto px-4 py-6 space-y-6">
+      <main className="max-w-2xl mx-auto px-4 py-6 space-y-5">
         <div className="flex items-center justify-between">
-          <h2 className="text-white font-semibold">クライアント一覧</h2>
+          <h2 className="text-white font-semibold">クライアント</h2>
           <Link
             href="/trainer/clients/new"
-            className="bg-green-500 hover:bg-green-400 text-black text-sm font-semibold px-4 py-2 rounded-xl transition-colors"
+            className="bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-semibold px-4 py-2 rounded-xl transition-colors"
           >
-            + 新規追加
+            + 追加
           </Link>
         </div>
 
         {!clients || clients.length === 0 ? (
-          <div className="text-center py-16 space-y-2">
-            <p className="text-gray-400">クライアントがまだいません</p>
-            <Link href="/trainer/clients/new" className="text-green-400 text-sm underline">
+          <div className="text-center py-20 space-y-3">
+            <p className="text-3xl">👤</p>
+            <p className="text-gray-400 text-sm">クライアントがまだいません</p>
+            <Link href="/trainer/clients/new" className="text-emerald-400 text-sm underline">
               最初のクライアントを追加する
             </Link>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             {clients.map((c) => (
               <Link
                 key={c.id}
                 href={`/trainer/clients/${c.id}`}
-                className="block bg-gray-900 border border-gray-800 rounded-2xl p-4 hover:border-green-800 transition-colors"
+                className="flex items-center justify-between bg-white/[0.03] border border-white/5 rounded-2xl p-4 hover:border-emerald-900/60 hover:bg-white/5 transition-all"
               >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-white font-medium">{c.name}</p>
-                    {c.goal && <p className="text-sm text-gray-400 mt-0.5">{c.goal}</p>}
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xs text-gray-500">開始日</p>
-                    <p className="text-sm text-gray-300">{formatDate(c.start_date)}</p>
-                  </div>
+                <div>
+                  <p className="text-white font-medium text-sm">{c.name}</p>
+                  {c.goal && <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">{c.goal}</p>}
+                </div>
+                <div className="text-right shrink-0 ml-4">
+                  <p className="text-[10px] text-gray-600">開始日</p>
+                  <p className="text-xs text-gray-400">{formatDate(c.start_date)}</p>
                 </div>
               </Link>
             ))}
