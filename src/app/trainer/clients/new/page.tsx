@@ -107,8 +107,6 @@ export default function NewClientPage() {
   );
 }
 
-const inputCls = "w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-green-400 placeholder:text-gray-600";
-
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1.5">
