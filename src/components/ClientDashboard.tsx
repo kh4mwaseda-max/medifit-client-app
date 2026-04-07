@@ -6,6 +6,8 @@ import TrainingChart from "./TrainingChart";
 import PhotoComparison from "./PhotoComparison";
 import AssessmentCard from "./AssessmentCard";
 import { formatDate, daysSince } from "@/lib/utils";
+import { format, parseISO } from "date-fns";
+import { ja } from "date-fns/locale";
 
 interface Props {
   client: { id: string; name: string; goal: string | null; start_date: string };
@@ -41,6 +43,13 @@ export default function ClientDashboard({
     latest && first && latest.body_fat_pct && first.body_fat_pct
       ? (latest.body_fat_pct - first.body_fat_pct).toFixed(1)
       : null;
+
+  // 総ボリューム計算
+  const totalVolume = trainingSessions.reduce((sum, s) => {
+    return sum + (s.training_sets?.reduce((v: number, t: any) => v + (t.weight_kg ?? 0) * (t.reps ?? 0), 0) ?? 0);
+  }, 0);
+
+  const latestSession = trainingSessions[0];
 
   return (
     <div className="min-h-screen bg-gray-950">
@@ -106,12 +115,44 @@ export default function ClientDashboard({
                 sub="直近30日間"
               />
               <StatCard
+                label="総ボリューム"
+                value={totalVolume > 0 ? `${(totalVolume / 1000).toFixed(1)}t` : "—"}
+                sub="直近30日間"
+                positive={totalVolume > 0}
+              />
+              <StatCard
                 label="コンディション"
                 value={latest?.condition_score ? `${latest.condition_score} / 10` : "—"}
                 sub="最新スコア"
                 positive={latest?.condition_score >= 7}
               />
             </div>
+
+            {latestSession && latestSession.training_sets?.length > 0 && (
+              <div className="bg-gray-900 rounded-2xl p-4 border border-gray-800 space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-gray-400">直近のトレーニング</p>
+                  <p className="text-xs text-gray-600">
+                    {format(parseISO(latestSession.session_date), "M月d日(E)", { locale: ja })}
+                  </p>
+                </div>
+                <div className="flex gap-2 flex-wrap">
+                  {Array.from(new Set(latestSession.training_sets.map((t: any) => t.exercise_name))).map((ex: any) => {
+                    const sets = latestSession.training_sets.filter((t: any) => t.exercise_name === ex);
+                    const vol = sets.reduce((s: number, t: any) => s + (t.weight_kg ?? 0) * (t.reps ?? 0), 0);
+                    return (
+                      <span key={ex} className="bg-gray-800 rounded-xl px-3 py-1.5 text-xs">
+                        <span className="text-white">{ex}</span>
+                        <span className="text-green-400 ml-2">{vol}kg</span>
+                      </span>
+                    );
+                  })}
+                </div>
+                <button onClick={() => setActiveTab("トレーニング")} className="text-xs text-gray-500 underline">
+                  詳細を見る →
+                </button>
+              </div>
+            )}
 
             {assessment && (
               <div className="bg-gray-900 rounded-2xl p-4 border border-green-900">
