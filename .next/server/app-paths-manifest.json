@@ -1,0 +1,17 @@
+{
+  "/_not-found/page": "app/_not-found/page.js",
+  "/api/assessment/generate/route": "app/api/assessment/generate/route.js",
+  "/api/auth/pin/route": "app/api/auth/pin/route.js",
+  "/api/line/webhook/route": "app/api/line/webhook/route.js",
+  "/api/trainer/assessment/route": "app/api/trainer/assessment/route.js",
+  "/api/trainer/auth/route": "app/api/trainer/auth/route.js",
+  "/api/trainer/body-record/route": "app/api/trainer/body-record/route.js",
+  "/api/trainer/clients/route": "app/api/trainer/clients/route.js",
+  "/api/trainer/training/route": "app/api/trainer/training/route.js",
+  "/page": "app/page.js",
+  "/trainer/clients/new/page": "app/trainer/clients/new/page.js",
+  "/trainer/login/page": "app/trainer/login/page.js",
+  "/trainer/clients/[id]/page": "app/trainer/clients/[id]/page.js",
+  "/client/[id]/page": "app/client/[id]/page.js",
+  "/trainer/page": "app/trainer/page.js"
+}

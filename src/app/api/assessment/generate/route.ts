@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createServerClient } from "@/lib/supabase";
 
-const client = new Anthropic();
+const anthropic = new Anthropic();
 
 export async function POST(req: NextRequest) {
   const { clientId } = await req.json();
@@ -10,23 +10,44 @@ export async function POST(req: NextRequest) {
 
   const supabase = createServerClient();
 
-  // 必要データを取得
-  const [clientRes, bodyRes, trainingRes, mealRes] = await Promise.all([
-    supabase.from("clients").select("name, goal, start_date").eq("id", clientId).single(),
-    supabase.from("body_records").select("*").eq("client_id", clientId)
-      .order("recorded_at", { ascending: false }).limit(30),
-    supabase.from("training_sessions").select("*, training_sets(*)").eq("client_id", clientId)
-      .order("session_date", { ascending: false }).limit(20),
-    supabase.from("meal_records").select("*").eq("client_id", clientId)
-      .order("meal_date", { ascending: false }).limit(30),
-  ]);
+  // クライアント情報を取得
+  const clientRes = await supabase
+    .from("clients")
+    .select("name, goal, start_date")
+    .eq("id", clientId)
+    .single();
 
-  const c = clientRes.data;
-  const bodyRecords = bodyRes.data ?? [];
-  const trainingSessions = trainingRes.data ?? [];
-  const mealRecords = mealRes.data ?? [];
+  if (clientRes.error || !clientRes.data) {
+    return NextResponse.json({ error: "Client not found" }, { status: 404 });
+  }
 
-  if (!c) return NextResponse.json({ error: "Client not found" }, { status: 404 });
+  const c = clientRes.data as any;
+
+  // その他データを並列取得
+  const bodyRes = await supabase
+    .from("body_records")
+    .select("*")
+    .eq("client_id", clientId)
+    .order("recorded_at", { ascending: false })
+    .limit(30);
+
+  const trainingRes = await supabase
+    .from("training_sessions")
+    .select("*, training_sets(*)")
+    .eq("client_id", clientId)
+    .order("session_date", { ascending: false })
+    .limit(20);
+
+  const mealRes = await supabase
+    .from("meal_records")
+    .select("*")
+    .eq("client_id", clientId)
+    .order("meal_date", { ascending: false })
+    .limit(30);
+
+  const bodyRecords: any[] = bodyRes.data ?? [];
+  const trainingSessions: any[] = trainingRes.data ?? [];
+  const mealRecords: any[] = mealRes.data ?? [];
 
   const latest = bodyRecords[0];
   const oldest = bodyRecords[bodyRecords.length - 1];
@@ -60,7 +81,7 @@ ${oldest && oldest.id !== latest?.id ? `
 
 【食事データ概要（直近30日）】
 ${mealRecords.length > 0
-  ? `平均カロリー: ${Math.round(mealRecords.reduce((s, m) => s + (m.calories ?? 0), 0) / mealRecords.length)} kcal/食`
+  ? `平均カロリー: ${Math.round(mealRecords.reduce((s: number, m: any) => s + (m.calories ?? 0), 0) / mealRecords.length)} kcal/食`
   : "データなし"
 }
 
@@ -78,7 +99,7 @@ ${mealRecords.length > 0
 JSON以外のテキストは含めないでください。
 `;
 
-  const message = await client.messages.create({
+  const message = await anthropic.messages.create({
     model: "claude-sonnet-4-6",
     max_tokens: 1024,
     messages: [{ role: "user", content: prompt }],
@@ -93,7 +114,6 @@ JSON以外のテキストは含めないでください。
     return NextResponse.json({ error: "AI parse error", raw: text }, { status: 500 });
   }
 
-  // DBに保存（未公開状態）
   const { data: saved, error } = await supabase
     .from("assessments")
     .insert({

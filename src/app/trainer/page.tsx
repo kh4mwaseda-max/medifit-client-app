@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { createServerClient } from "@/lib/supabase";
 import Link from "next/link";
 import LogoutButton from "./LogoutButton";
