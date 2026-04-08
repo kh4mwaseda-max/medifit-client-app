@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Logo from "@/components/Logo";
 
 export default function Home() {
   return (
@@ -6,14 +7,8 @@ export default function Home() {
       <div className="text-center space-y-6 max-w-sm">
 
         {/* ロゴ */}
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-18 h-18 w-20 h-20 rounded-3xl bg-gradient-to-br from-blue-500 to-sky-400 flex items-center justify-center shadow-xl shadow-blue-200">
-            <span className="text-white text-3xl font-black leading-none">A</span>
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-slate-800 tracking-tight">AllYourFit</h1>
-            <p className="text-xs text-slate-400 mt-1 tracking-wide">Personal Health Intelligence</p>
-          </div>
+        <div className="flex flex-col items-center gap-4">
+          <Logo size="xl" variant="full" />
         </div>
 
         <p className="text-slate-500 text-sm leading-relaxed">

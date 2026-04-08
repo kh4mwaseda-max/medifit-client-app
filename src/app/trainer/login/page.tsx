@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Logo from "@/components/Logo";
 
 export default function TrainerLogin() {
   const [password, setPassword] = useState("");
@@ -35,9 +36,7 @@ export default function TrainerLogin() {
 
         {/* ロゴ */}
         <div className="flex flex-col items-center gap-3">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-sky-400 flex items-center justify-center shadow-lg shadow-blue-200">
-            <span className="text-white text-2xl font-black leading-none">A</span>
-          </div>
+          <Logo size="lg" variant="mark" />
           <div className="text-center">
             <h1 className="text-xl font-bold text-slate-800 tracking-tight">AllYourFit</h1>
             <p className="mt-1 text-sm text-slate-500">トレーナー管理画面</p>

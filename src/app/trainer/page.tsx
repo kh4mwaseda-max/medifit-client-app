@@ -4,6 +4,7 @@ import { createServerClient } from "@/lib/supabase";
 import Link from "next/link";
 import LogoutButton from "./LogoutButton";
 import { formatDate } from "@/lib/utils";
+import Logo from "@/components/Logo";
 
 const TRAINER_ID = process.env.TRAINER_ID!;
 
@@ -21,13 +22,8 @@ export default async function TrainerDashboard() {
       {/* ヘッダー */}
       <header className="bg-white border-b border-slate-200 px-5 py-3.5 flex items-center justify-between sticky top-0 z-10 shadow-sm">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-sky-400 flex items-center justify-center shadow-md shadow-blue-100">
-            <span className="text-white text-sm font-black leading-none">A</span>
-          </div>
-          <div>
-            <p className="text-slate-800 font-bold text-sm leading-none">AllYourFit</p>
-            <p className="text-[11px] text-slate-400 leading-none mt-0.5">トレーナー管理</p>
-          </div>
+          <Logo size="sm" />
+          <p className="text-[11px] text-slate-400 leading-none border-l border-slate-200 pl-2.5 ml-0.5">トレーナー管理</p>
         </div>
         <LogoutButton />
       </header>

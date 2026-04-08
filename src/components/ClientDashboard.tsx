@@ -11,6 +11,7 @@ import { getMockRecommendation } from "@/lib/recommendation-engine";
 import { daysSince } from "@/lib/utils";
 import { format, parseISO } from "date-fns";
 import { ja } from "date-fns/locale";
+import Logo from "./Logo";
 
 interface Props {
   client: { id: string; name: string; goal: string | null; start_date: string };
@@ -84,7 +85,7 @@ export default function ClientDashboard({
 
       {/* ── ヘッダー ── */}
       <header className="bg-white border-b border-slate-200 print:border-gray-300 px-5 py-3.5 flex items-center justify-between sticky top-0 z-20 shadow-sm">
-        <Logo />
+        <Logo size="sm" />
         <div className="flex items-center gap-4">
           <DayBadge day={dayCount} />
           <button
@@ -179,19 +180,6 @@ export default function ClientDashboard({
   );
 }
 
-// ── ロゴ ──────────────────────────────────────────────────────
-function Logo() {
-  return (
-    <div className="flex items-center gap-2.5">
-      <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-sky-400 flex items-center justify-center shadow-md shadow-blue-200">
-        <span className="text-white text-sm font-black leading-none">A</span>
-      </div>
-      <span className="text-slate-800 font-bold text-base tracking-tight">
-        AllYourFit
-      </span>
-    </div>
-  );
-}
 
 // ── 開始日数バッジ ────────────────────────────────────────────
 function DayBadge({ day }: { day: number }) {
