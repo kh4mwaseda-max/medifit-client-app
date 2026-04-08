@@ -217,6 +217,13 @@ export default function ClientDashboard({
                 target_body_fat_pct={goals?.target_body_fat_pct ?? null}
                 target_weight_kg={goals?.target_weight_kg ?? null}
                 condition_score={latestBody?.condition_score ?? null}
+                bmi={latestBody?.bmi ?? null}
+                bone_mass_kg={latestBody?.bone_mass_kg ?? null}
+                visceral_fat_level={latestBody?.visceral_fat_level ?? null}
+                systolic_bp={latestBody?.systolic_bp ?? null}
+                diastolic_bp={latestBody?.diastolic_bp ?? null}
+                resting_heart_rate={latestBody?.resting_heart_rate ?? null}
+                sleep_hours={latestBody?.sleep_hours ?? null}
                 lastTrainedMuscles={
                   trainingSessions[0]?.training_sets
                     ? ([...new Set(trainingSessions[0].training_sets.map((t: any) => t.muscle_group).filter(Boolean))] as string[])
