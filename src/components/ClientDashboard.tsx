@@ -17,6 +17,7 @@ import RecommendationPanel from "./RecommendationPanel";
 import { getMockRecommendation, type RecommendationResult, type PHRInput } from "@/lib/recommendation-engine";
 import { daysSince } from "@/lib/utils";
 import Logo from "./Logo";
+import DigitalTwin from "./DigitalTwin";
 
 interface Props {
   client: {
@@ -202,35 +203,66 @@ export default function ClientDashboard({
 
         {/* ── サマリー ── */}
         <div className={activeTab === "サマリー" ? "block space-y-3" : "hidden print:block print:space-y-3"}>
-          {/* KPIグリッド */}
-          <KPIGrid
-            latestBody={latestBody}
-            weightDiff={weightDiff}
-            fatDiff={fatDiff}
-            trainingSessions={trainingSessions}
-            totalVolume={totalVolume}
-            avgCalories={avgCalories}
-            goals={goals}
-          />
 
-          {/* 2カラムグリッド：体重グラフ ＋ PFC */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-            {bodyRecords.length >= 3 && (
-              <WeightSparkCard records={bodyRecords} goals={goals} />
-            )}
-            {avgCalories != null && (
-              <PFCBarCard mealRecords={recentMeals} goals={goals} />
-            )}
-          </div>
+          {/* メイン2カラム: 左=デジタルツイン / 右=KPI+グラフ */}
+          <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-3 items-start">
 
-          {/* 2カラムグリッド：直近トレーニング ＋ アセスメント */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-            {trainingSessions[0]?.training_sets?.length > 0 && (
-              <LastSessionCard session={trainingSessions[0]} />
-            )}
-            {assessment && (
-              <AssessmentPreviewCard assessment={assessment} onDetail={() => setActiveTab("AI分析")} />
-            )}
+            {/* ── デジタルツインパネル ── */}
+            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-5 flex flex-col items-center">
+              <p className="text-[10px] font-semibold text-slate-400 tracking-widest mb-4 uppercase">Digital Twin</p>
+              <DigitalTwin
+                weight_kg={latestBody?.weight_kg ?? null}
+                body_fat_pct={latestBody?.body_fat_pct ?? null}
+                muscle_mass_kg={latestBody?.muscle_mass_kg ?? null}
+                target_body_fat_pct={goals?.target_body_fat_pct ?? null}
+                target_weight_kg={goals?.target_weight_kg ?? null}
+                condition_score={latestBody?.condition_score ?? null}
+                lastTrainedMuscles={
+                  trainingSessions[0]?.training_sets
+                    ? ([...new Set(trainingSessions[0].training_sets.map((t: any) => t.muscle_group).filter(Boolean))] as string[])
+                    : []
+                }
+              />
+              {latestBody && (
+                <p className="text-[9px] text-slate-300 mt-3">
+                  最終計測: {format(parseISO(latestBody.recorded_at), "M月d日", { locale: ja })}
+                </p>
+              )}
+            </div>
+
+            {/* ── 右カラム: KPI + グラフ ── */}
+            <div className="space-y-3">
+              {/* KPIグリッド */}
+              <KPIGrid
+                latestBody={latestBody}
+                weightDiff={weightDiff}
+                fatDiff={fatDiff}
+                trainingSessions={trainingSessions}
+                totalVolume={totalVolume}
+                avgCalories={avgCalories}
+                goals={goals}
+              />
+
+              {/* 体重グラフ ＋ PFC */}
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+                {bodyRecords.length >= 3 && (
+                  <WeightSparkCard records={bodyRecords} goals={goals} />
+                )}
+                {avgCalories != null && (
+                  <PFCBarCard mealRecords={recentMeals} goals={goals} />
+                )}
+              </div>
+
+              {/* 直近トレーニング ＋ アセスメント */}
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+                {trainingSessions[0]?.training_sets?.length > 0 && (
+                  <LastSessionCard session={trainingSessions[0]} />
+                )}
+                {assessment && (
+                  <AssessmentPreviewCard assessment={assessment} onDetail={() => setActiveTab("AI分析")} />
+                )}
+              </div>
+            </div>
           </div>
         </div>
 
