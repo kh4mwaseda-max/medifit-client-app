@@ -12,6 +12,8 @@ import { daysSince } from "@/lib/utils";
 import { format, parseISO } from "date-fns";
 import { ja } from "date-fns/locale";
 import Logo from "./Logo";
+import MedicalDataPanel from "./MedicalDataPanel";
+import { getMockMynaPortalData } from "@/lib/health-data-connector";
 
 interface Props {
   client: { id: string; name: string; goal: string | null; start_date: string };
@@ -28,6 +30,7 @@ const TABS = [
   { id: "トレーニング", icon: "🏋", label: "トレーニング" },
   { id: "食事",        icon: "🥗",  label: "食事"        },
   { id: "フォト",      icon: "📷",  label: "フォト"      },
+  { id: "医療データ",   icon: "🩺", label: "医療データ"   },
   { id: "AI分析",      icon: "✦",  label: "AI分析"      },
   { id: "提案",        icon: "💡",  label: "提案"        },
 ] as const;
@@ -78,6 +81,7 @@ export default function ClientDashboard({
 
   const latestSession = trainingSessions[0];
   const recommendation = getMockRecommendation();
+  const mynaData = getMockMynaPortalData();
   const handlePrint = () => window.print();
 
   return (
@@ -131,6 +135,9 @@ export default function ClientDashboard({
               {hasDot && (
                 <span className={`w-1.5 h-1.5 rounded-full ${id === "提案" ? "bg-amber-400" : "bg-blue-500"}`} />
               )}
+              {id === "医療データ" && (
+                <span className="w-1.5 h-1.5 rounded-full bg-teal-400" />
+              )}
             </button>
           );
         })}
@@ -169,6 +176,10 @@ export default function ClientDashboard({
         <div className={activeTab === "フォト" ? "block" : "hidden"}>
           <PhotoComparison photos={bodyPhotos} />
         </div>
+        <div className={activeTab === "医療データ" ? "block" : "hidden"}>
+          <MedicalDataPanel mynaData={mynaData} />
+        </div>
+
         <div className={activeTab === "AI分析" ? "block" : "hidden"}>
           <AssessmentCard assessment={assessment} />
         </div>
