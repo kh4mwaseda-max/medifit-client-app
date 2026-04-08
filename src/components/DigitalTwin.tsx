@@ -1,431 +1,473 @@
 "use client";
 
-import {
-  RadarChart, Radar, PolarGrid, PolarAngleAxis,
-  ResponsiveContainer, BarChart, Bar, Cell, XAxis, YAxis, Tooltip,
-} from "recharts";
+import { RadarChart, Radar, PolarGrid, PolarAngleAxis, ResponsiveContainer } from "recharts";
 
 interface Props {
+  // 最新値
   weight_kg: number | null;
   body_fat_pct: number | null;
   muscle_mass_kg: number | null;
-  target_body_fat_pct?: number | null;
-  target_weight_kg?: number | null;
-  lastTrainedMuscles?: string[];
-  condition_score?: number | null;
-  // 追加計測値
-  bmi?: number | null;
   bone_mass_kg?: number | null;
+  bmi?: number | null;
   visceral_fat_level?: number | null;
+  condition_score?: number | null;
+  sleep_hours?: number | null;
+  resting_heart_rate?: number | null;
   systolic_bp?: number | null;
   diastolic_bp?: number | null;
-  resting_heart_rate?: number | null;
-  sleep_hours?: number | null;
+  // 前回値
+  prev_weight_kg?: number | null;
+  prev_body_fat_pct?: number | null;
+  prev_muscle_mass_kg?: number | null;
+  // 初回値
+  first_weight_kg?: number | null;
+  first_body_fat_pct?: number | null;
+  first_muscle_mass_kg?: number | null;
+  // クライアント情報
+  height_cm?: number | null;
+  gender?: string | null;
+  birth_year?: number | null;
+  recorded_at?: string | null;
+  // 目標
+  target_weight_kg?: number | null;
+  target_body_fat_pct?: number | null;
+  // トレーニング
+  lastTrainedMuscles?: string[];
 }
 
-// 体脂肪率カラーマップ
-function fatColor(pct: number | null) {
-  if (pct == null) return "#94a3b8";
-  if (pct < 10)   return "#f97316";
-  if (pct < 15)   return "#06b6d4";
-  if (pct < 20)   return "#22c55e";
-  if (pct < 25)   return "#84cc16";
-  if (pct < 30)   return "#eab308";
-  return "#ef4444";
-}
-function fatLabel(pct: number | null) {
-  if (pct == null) return "未計測";
-  if (pct < 10)   return "アスリート";
-  if (pct < 15)   return "フィット";
-  if (pct < 20)   return "標準";
-  if (pct < 25)   return "やや高め";
-  if (pct < 30)   return "高め";
-  return "要改善";
+// ── ヘルパー ─────────────────────────────────────────────────────────
+
+const fmt = (v: number | null | undefined, dp = 1) =>
+  v != null ? String(+v.toFixed(dp)) : "—";
+
+function delta(curr: number | null | undefined, prev: number | null | undefined, dp = 1) {
+  if (curr == null || prev == null) return null;
+  return +(curr - prev).toFixed(dp);
 }
 
-// BMI判定
-function bmiLabel(bmi: number | null) {
-  if (bmi == null) return { label: "—", color: "#94a3b8" };
-  if (bmi < 18.5) return { label: "低体重", color: "#60a5fa" };
-  if (bmi < 25)   return { label: "標準", color: "#22c55e" };
-  if (bmi < 30)   return { label: "過体重", color: "#eab308" };
-  return           { label: "肥満", color: "#ef4444" };
-}
-
-// 内臓脂肪レベル判定
-function visceralLabel(level: number | null) {
-  if (level == null) return { label: "—", color: "#94a3b8" };
-  if (level <= 9)  return { label: "標準", color: "#22c55e" };
-  if (level <= 14) return { label: "やや高", color: "#eab308" };
-  return           { label: "高い", color: "#ef4444" };
-}
-
-// 血圧判定
-function bpLabel(sys: number | null) {
-  if (sys == null) return { label: "—", color: "#94a3b8" };
-  if (sys < 120)   return { label: "正常", color: "#22c55e" };
-  if (sys < 130)   return { label: "正常高値", color: "#84cc16" };
-  if (sys < 140)   return { label: "高値", color: "#eab308" };
-  return           { label: "高血圧", color: "#ef4444" };
-}
-
-// セクションタイトル
-function SectionTitle({ children }: { children: React.ReactNode }) {
+/** 前回比/初回比セル */
+function DeltaCell({ d, lowerIsBetter }: { d: number | null; lowerIsBetter?: boolean }) {
+  if (d == null) {
+    return <td className="py-2 px-2 text-center text-[10px] text-slate-300">—</td>;
+  }
+  if (d === 0) {
+    return <td className="py-2 px-2 text-center text-[10px] text-slate-400">→ 0</td>;
+  }
+  const good = lowerIsBetter ? d < 0 : d > 0;
   return (
-    <div className="flex items-center gap-2 mb-2">
-      <div className="h-px flex-1 bg-slate-100" />
-      <p className="text-[9px] font-bold text-slate-400 tracking-widest uppercase whitespace-nowrap">{children}</p>
-      <div className="h-px flex-1 bg-slate-100" />
-    </div>
+    <td className={`py-2 px-2 text-center text-[10px] font-bold tabular-nums ${good ? "text-blue-600" : "text-rose-500"}`}>
+      {d < 0 ? "▼" : "▲"}{Math.abs(d)}
+    </td>
   );
 }
 
-// スコアゲージ（水平バー）
-function GaugeBar({ value, max, color, label, unit }: {
-  value: number | null; max: number; color: string; label: string; unit: string;
-}) {
-  const pct = value != null ? Math.min(100, (value / max) * 100) : 0;
-  return (
-    <div>
-      <div className="flex justify-between items-baseline mb-0.5">
-        <span className="text-[9px] text-slate-400">{label}</span>
-        <span className="text-[11px] font-black text-slate-700 tabular-nums">
-          {value ?? "—"}<span className="text-[8px] font-normal text-slate-400 ml-0.5">{unit}</span>
-        </span>
-      </div>
-      <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-        <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, background: color }} />
-      </div>
-    </div>
-  );
+function bodyType(bmi: number | null, fat: number | null, gender: string | null) {
+  if (!bmi || !fat) return { label: "—", cls: "bg-slate-100 text-slate-500" };
+  const male = gender !== "女性" && gender !== "female";
+  const highFat = male ? fat > 22 : fat > 30;
+  const lowFat  = male ? fat < 10 : fat < 17;
+  if (bmi < 18.5)             return { label: "やせ型",      cls: "bg-blue-50 text-blue-600" };
+  if (lowFat && bmi >= 22)    return { label: "筋肉質",      cls: "bg-violet-50 text-violet-600" };
+  if (highFat && bmi < 25)    return { label: "かくれ肥満",  cls: "bg-amber-50 text-amber-600" };
+  if (highFat && bmi >= 25)   return { label: "肥満",        cls: "bg-rose-50 text-rose-500" };
+  return                             { label: "スタンダード", cls: "bg-teal-50 text-teal-600" };
 }
 
-// 数値バッジ
-function MetricBadge({ label, value, unit, color, sub }: {
-  label: string; value: number | null | string; unit: string; color: string; sub?: string;
-}) {
-  return (
-    <div className="bg-slate-50 rounded-xl p-2.5 border border-slate-100 flex flex-col">
-      <p className="text-[8px] text-slate-400 leading-none mb-1">{label}</p>
-      <p className="text-xl font-black tabular-nums leading-none" style={{ color }}>
-        {value ?? "—"}
-        <span className="text-[9px] font-normal text-slate-400 ml-0.5">{unit}</span>
-      </p>
-      {sub && <p className="text-[8px] mt-0.5" style={{ color }}>{sub}</p>}
-    </div>
-  );
+function fatRange(gender: string | null) {
+  return gender === "女性" || gender === "female" ? "17.0–30.0%" : "10.0–22.0%";
 }
+
+function fatStatus(fat: number | null, gender: string | null) {
+  if (!fat) return "";
+  const male = gender !== "女性" && gender !== "female";
+  if (male)  { if (fat < 10) return "低"; if (fat <= 17) return "標準"; if (fat <= 22) return "やや高"; return "高"; }
+  else       { if (fat < 17) return "低"; if (fat <= 27) return "標準"; if (fat <= 32) return "やや高"; return "高"; }
+}
+
+// ── コンポーネント ──────────────────────────────────────────────────
 
 export default function DigitalTwin({
-  weight_kg, body_fat_pct, muscle_mass_kg,
-  target_body_fat_pct, target_weight_kg,
-  lastTrainedMuscles = [], condition_score,
-  bmi, bone_mass_kg, visceral_fat_level,
-  systolic_bp, diastolic_bp, resting_heart_rate, sleep_hours,
+  weight_kg, body_fat_pct, muscle_mass_kg, bone_mass_kg,
+  bmi, visceral_fat_level, condition_score, sleep_hours,
+  resting_heart_rate, systolic_bp, diastolic_bp,
+  prev_weight_kg, prev_body_fat_pct, prev_muscle_mass_kg,
+  first_weight_kg, first_body_fat_pct, first_muscle_mass_kg,
+  height_cm, gender, birth_year, recorded_at,
+  target_weight_kg, target_body_fat_pct,
+  lastTrainedMuscles = [],
 }: Props) {
-  const fc = fatColor(body_fat_pct);
-  const fl = fatLabel(body_fat_pct);
-  const bmiInfo = bmiLabel(bmi ?? (weight_kg && muscle_mass_kg ? +(weight_kg / ((1.7) ** 2)).toFixed(1) : null));
-  const visInfo = visceralLabel(visceral_fat_level ?? null);
-  const bpInfo  = bpLabel(systolic_bp ?? null);
+  const age     = birth_year ? new Date().getFullYear() - birth_year : null;
+  const heightM = height_cm ? height_cm / 100 : null;
 
-  // 体組成内訳（推定）
-  const fatMass    = weight_kg && body_fat_pct ? +(weight_kg * body_fat_pct / 100).toFixed(1) : null;
-  const leanMass   = weight_kg && fatMass ? +(weight_kg - fatMass).toFixed(1) : null;
+  // 計算値
+  const fatMass  = weight_kg && body_fat_pct ? +(weight_kg * body_fat_pct / 100).toFixed(1) : null;
+  const leanMass = weight_kg && fatMass      ? +(weight_kg - fatMass).toFixed(1)             : null;
+  const calcBMI  = bmi ?? (weight_kg && heightM ? +(weight_kg / (heightM * heightM)).toFixed(1) : null);
+  const smi      = muscle_mass_kg && heightM   ? +(muscle_mass_kg / (heightM * heightM)).toFixed(2) : null;
 
-  // レーダーチャートデータ（5軸スコア）
+  // Mifflin-St Jeor BMR
+  const bmr = (() => {
+    if (!weight_kg || !height_cm || !age) return null;
+    const male = gender !== "女性" && gender !== "female";
+    return Math.round(10 * weight_kg + 6.25 * height_cm - 5 * age + (male ? 5 : -161));
+  })();
+
+  const bt = bodyType(calcBMI, body_fat_pct, gender ?? null);
+
+  // 前回比
+  const dW  = delta(weight_kg,    prev_weight_kg);
+  const dF  = delta(body_fat_pct, prev_body_fat_pct);
+  const dM  = delta(muscle_mass_kg, prev_muscle_mass_kg);
+  // 初回比
+  const diW = delta(weight_kg,    first_weight_kg);
+  const diF = delta(body_fat_pct, first_body_fat_pct);
+  const diM = delta(muscle_mass_kg, first_muscle_mass_kg);
+
+  // 標準体重レンジ
+  const weightStd = heightM
+    ? `${(heightM * heightM * 18.5).toFixed(1)}–${(heightM * heightM * 25).toFixed(1)}kg`
+    : "—";
+
+  // 体型判定 (gender check for BMI/fat)
+  const male = gender !== "女性" && gender !== "female";
+  const smiOk = smi ? smi >= (male ? 7.0 : 5.7) : null;
+
+  // レーダーデータ
   const radarData = [
-    { axis: "筋力",     score: muscle_mass_kg ? Math.min(100, Math.round(muscle_mass_kg / 70 * 100)) : 0 },
-    { axis: "体組成",   score: body_fat_pct   ? Math.max(0, Math.round(100 - (body_fat_pct - 10) * 4)) : 0 },
-    { axis: "心肺",     score: resting_heart_rate ? Math.max(0, Math.round(100 - (resting_heart_rate - 40) * 1.2)) : 0 },
+    { axis: "筋力",    score: smi ? Math.min(100, Math.round(smi / (male ? 10 : 7) * 100)) : muscle_mass_kg ? Math.min(100, Math.round(muscle_mass_kg / 60 * 100)) : 0 },
+    { axis: "体組成",  score: body_fat_pct ? Math.max(0, Math.round(100 - (body_fat_pct - (male ? 10 : 17)) * 4)) : 0 },
     { axis: "コンディション", score: condition_score ? condition_score * 10 : 0 },
-    { axis: "睡眠",     score: sleep_hours ? Math.min(100, Math.round(sleep_hours / 8 * 100)) : 0 },
+    { axis: "睡眠",    score: sleep_hours ? Math.min(100, Math.round(sleep_hours / 8 * 100)) : 0 },
+    { axis: "バイタル", score: resting_heart_rate ? Math.max(0, Math.round(100 - (resting_heart_rate - 40) * 1.5)) : 60 },
   ];
-
-  // 総合スコア
-  const overallScore = Math.round(radarData.reduce((s, d) => s + d.score, 0) / radarData.length);
-
-  // 筋肉部位バーチャートデータ
-  const muscleGroupData = [
-    { name: "胸",   trained: lastTrainedMuscles.includes("胸") },
-    { name: "背中", trained: lastTrainedMuscles.includes("背中") },
-    { name: "肩",   trained: lastTrainedMuscles.includes("肩") },
-    { name: "脚",   trained: lastTrainedMuscles.includes("脚") },
-    { name: "腕",   trained: lastTrainedMuscles.includes("腕") },
-    { name: "腹",   trained: lastTrainedMuscles.includes("腹") },
-  ].map((d) => ({ ...d, value: d.trained ? 85 + Math.random() * 15 : 30 + Math.random() * 40 }));
+  const overall = Math.round(radarData.reduce((s, d) => s + d.score, 0) / radarData.length);
 
   return (
-    <div className="w-full space-y-3 text-left">
+    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
 
-      {/* ══ ヘッダー：総合スコア ══ */}
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-[9px] text-slate-400 uppercase tracking-widest">Overall Score</p>
-          <div className="flex items-baseline gap-1.5">
-            <p className="text-5xl font-black tabular-nums leading-none" style={{ color: fc }}>
-              {overallScore}
-            </p>
-            <p className="text-xs text-slate-400">/ 100</p>
-          </div>
-        </div>
-        {/* 体脂肪ステータス */}
-        <div className="text-right">
-          <span
-            className="text-[10px] font-bold px-3 py-1.5 rounded-full"
-            style={{ background: `${fc}18`, color: fc, border: `1px solid ${fc}40` }}
-          >
-            {fl}
-          </span>
-          {body_fat_pct != null && (
-            <p className="text-xs font-black tabular-nums mt-1" style={{ color: fc }}>
-              体脂肪率 {body_fat_pct}%
+      {/* ══ ヘッダーバー ══ */}
+      <div className="bg-slate-800 px-4 py-2.5 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-3">
+          <p className="text-[11px] font-bold text-white tracking-widest uppercase">Body Analysis</p>
+          {recorded_at && (
+            <p className="text-[9px] text-slate-400">
+              測定 {new Date(recorded_at).toLocaleDateString("ja-JP", { year: "2-digit", month: "2-digit", day: "2-digit" })}
             </p>
           )}
         </div>
-      </div>
-
-      {/* ══ 主要指標グリッド ══ */}
-      <div className="grid grid-cols-3 gap-2">
-        <MetricBadge label="体重"   value={weight_kg}    unit="kg" color="#334155" sub={target_weight_kg ? `目標 ${target_weight_kg}kg` : undefined} />
-        <MetricBadge label="筋肉量" value={muscle_mass_kg} unit="kg" color="#3b82f6" />
-        <MetricBadge label="除脂肪体重" value={leanMass}  unit="kg" color="#6366f1" />
-        <MetricBadge label="脂肪量" value={fatMass}      unit="kg" color={fc} />
-        <MetricBadge label="骨量"   value={bone_mass_kg ?? null} unit="kg" color="#f59e0b" />
-        <MetricBadge
-          label="BMI"
-          value={bmi ?? (weight_kg ? +(weight_kg / (1.70 ** 2)).toFixed(1) : null)}
-          unit=""
-          color={bmiInfo.color}
-          sub={bmiInfo.label}
-        />
-      </div>
-
-      {/* ══ レーダーチャート ══ */}
-      <div>
-        <SectionTitle>フィットネス総合評価</SectionTitle>
-        <ResponsiveContainer width="100%" height={160}>
-          <RadarChart data={radarData} cx="50%" cy="50%" outerRadius={60}>
-            <PolarGrid stroke="#e2e8f0" />
-            <PolarAngleAxis
-              dataKey="axis"
-              tick={{ fill: "#94a3b8", fontSize: 9, fontWeight: 600 }}
-            />
-            <Radar
-              dataKey="score"
-              stroke={fc}
-              fill={fc}
-              fillOpacity={0.2}
-              strokeWidth={1.5}
-            />
-          </RadarChart>
-        </ResponsiveContainer>
-      </div>
-
-      {/* ══ 体組成バー ══ */}
-      <div>
-        <SectionTitle>体組成内訳</SectionTitle>
-        <div className="space-y-2">
-          <GaugeBar value={body_fat_pct}     max={40}   color={fc}        label="体脂肪率"      unit="%" />
-          <GaugeBar value={muscle_mass_kg}   max={80}   color="#3b82f6"   label="筋肉量"        unit="kg" />
-          {bone_mass_kg && <GaugeBar value={bone_mass_kg} max={4} color="#f59e0b" label="骨量" unit="kg" />}
+        <div className="flex items-center gap-2 flex-wrap">
+          {height_cm && <span className="text-[9px] text-slate-400">身長 {height_cm}cm</span>}
+          {age        && <span className="text-[9px] text-slate-400">{age}歳</span>}
+          {gender     && <span className="text-[9px] text-slate-400">{gender}</span>}
+          <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${bt.cls}`}>{bt.label}</span>
         </div>
-        {/* 脂肪 vs 筋肉 比率バー */}
-        {weight_kg && fatMass && leanMass && (
-          <div className="mt-2">
-            <p className="text-[8px] text-slate-400 mb-1">脂肪 vs 除脂肪 比率</p>
-            <div className="h-2.5 rounded-full overflow-hidden flex">
-              <div
-                className="h-full transition-all duration-700"
-                style={{ width: `${body_fat_pct}%`, background: fc }}
-              />
-              <div
-                className="h-full flex-1"
-                style={{ background: "#3b82f6" }}
-              />
+      </div>
+
+      <div className="p-4 grid grid-cols-1 lg:grid-cols-[1fr_220px] gap-5">
+
+        {/* ══ 左: 比較テーブル ══ */}
+        <div className="space-y-4">
+
+          {/* メイン計測値テーブル */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-[11px] border-collapse min-w-[420px]">
+              <thead>
+                <tr>
+                  <th className="py-1.5 px-2 text-left text-[9px] text-slate-400 font-semibold border-b-2 border-slate-100 w-20">指標</th>
+                  <th className="py-1.5 px-2 text-center text-[9px] text-slate-700 font-bold border-b-2 border-slate-100">今回</th>
+                  <th className="py-1.5 px-2 text-center text-[9px] text-slate-400 font-semibold border-b-2 border-slate-100">前回比</th>
+                  <th className="py-1.5 px-2 text-center text-[9px] text-slate-400 font-semibold border-b-2 border-slate-100">初回比</th>
+                  <th className="py-1.5 px-2 text-right text-[9px] text-slate-300 font-semibold border-b-2 border-slate-100">標準範囲</th>
+                </tr>
+              </thead>
+              <tbody>
+
+                {/* 体重 */}
+                <tr className="border-b border-slate-50">
+                  <td className="py-2 px-2 text-slate-600 font-semibold">体重</td>
+                  <td className="py-2 px-2 text-center">
+                    <span className="text-base font-black text-slate-800 tabular-nums">{fmt(weight_kg)}</span>
+                    <span className="text-[9px] text-slate-400 ml-0.5">kg</span>
+                  </td>
+                  <DeltaCell d={dW} lowerIsBetter />
+                  <DeltaCell d={diW} lowerIsBetter />
+                  <td className="py-2 px-2 text-right text-[9px] text-slate-300">{weightStd}</td>
+                </tr>
+
+                {/* 体脂肪率 */}
+                <tr className="border-b border-slate-50 bg-slate-50/40">
+                  <td className="py-2 px-2 text-slate-600 font-semibold">体脂肪率</td>
+                  <td className="py-2 px-2 text-center">
+                    <span className="text-base font-black text-slate-800 tabular-nums">{fmt(body_fat_pct)}</span>
+                    <span className="text-[9px] text-slate-400 ml-0.5">%</span>
+                    {body_fat_pct && (
+                      <span className="ml-1 text-[8px] text-slate-400">({fatStatus(body_fat_pct, gender ?? null)})</span>
+                    )}
+                  </td>
+                  <DeltaCell d={dF} lowerIsBetter />
+                  <DeltaCell d={diF} lowerIsBetter />
+                  <td className="py-2 px-2 text-right text-[9px] text-slate-300">{fatRange(gender ?? null)}</td>
+                </tr>
+
+                {/* 脂肪量 */}
+                <tr className="border-b border-slate-50">
+                  <td className="py-2 px-2 text-slate-600 font-semibold">脂肪量</td>
+                  <td className="py-2 px-2 text-center">
+                    <span className="text-base font-black text-slate-800 tabular-nums">{fmt(fatMass)}</span>
+                    <span className="text-[9px] text-slate-400 ml-0.5">kg</span>
+                  </td>
+                  <td className="py-2 px-2 text-center text-[9px] text-slate-300">—</td>
+                  <td className="py-2 px-2 text-center text-[9px] text-slate-300">—</td>
+                  <td className="py-2 px-2 text-right text-[9px] text-slate-300">—</td>
+                </tr>
+
+                {/* 筋肉量 */}
+                <tr className="border-b border-slate-50 bg-slate-50/40">
+                  <td className="py-2 px-2 text-slate-600 font-semibold">筋肉量</td>
+                  <td className="py-2 px-2 text-center">
+                    <span className="text-base font-black text-blue-700 tabular-nums">{fmt(muscle_mass_kg)}</span>
+                    <span className="text-[9px] text-slate-400 ml-0.5">kg</span>
+                  </td>
+                  <DeltaCell d={dM} lowerIsBetter={false} />
+                  <DeltaCell d={diM} lowerIsBetter={false} />
+                  <td className="py-2 px-2 text-right text-[9px] text-slate-300">
+                    SMI {male ? "≥7.0" : "≥5.7"}
+                  </td>
+                </tr>
+
+                {/* 除脂肪体重 */}
+                <tr className="border-b border-slate-50">
+                  <td className="py-2 px-2 text-slate-600 font-semibold">除脂肪量</td>
+                  <td className="py-2 px-2 text-center">
+                    <span className="text-base font-black text-slate-800 tabular-nums">{fmt(leanMass)}</span>
+                    <span className="text-[9px] text-slate-400 ml-0.5">kg</span>
+                  </td>
+                  <td className="py-2 px-2 text-center text-[9px] text-slate-300">—</td>
+                  <td className="py-2 px-2 text-center text-[9px] text-slate-300">—</td>
+                  <td className="py-2 px-2 text-right text-[9px] text-slate-300">—</td>
+                </tr>
+
+                {/* 骨量（データあれば） */}
+                {bone_mass_kg != null && (
+                  <tr className="bg-slate-50/40">
+                    <td className="py-2 px-2 text-slate-600 font-semibold">骨量</td>
+                    <td className="py-2 px-2 text-center">
+                      <span className="text-base font-black text-amber-600 tabular-nums">{fmt(bone_mass_kg)}</span>
+                      <span className="text-[9px] text-slate-400 ml-0.5">kg</span>
+                    </td>
+                    <td className="py-2 px-2 text-center text-[9px] text-slate-300">—</td>
+                    <td className="py-2 px-2 text-center text-[9px] text-slate-300">—</td>
+                    <td className="py-2 px-2 text-right text-[9px] text-slate-300">2.5–3.2kg</td>
+                  </tr>
+                )}
+
+              </tbody>
+            </table>
+          </div>
+
+          {/* ══ キー指標 4マス ══ */}
+          <div className="grid grid-cols-4 gap-2">
+            {/* BMI */}
+            <div className="bg-slate-50 border border-slate-100 rounded-xl p-2.5 text-center">
+              <p className="text-[8px] text-slate-400">BMI</p>
+              <p className={`text-xl font-black tabular-nums leading-tight ${calcBMI && calcBMI < 25 ? "text-teal-600" : "text-amber-500"}`}>
+                {fmt(calcBMI)}
+              </p>
+              <p className={`text-[8px] ${calcBMI && calcBMI < 25 ? "text-teal-500" : "text-amber-400"}`}>
+                {calcBMI ? (calcBMI < 18.5 ? "低体重" : calcBMI < 25 ? "標準" : calcBMI < 30 ? "過体重" : "肥満") : "—"}
+              </p>
             </div>
-            <div className="flex justify-between text-[8px] mt-0.5">
-              <span style={{ color: fc }}>脂肪 {fatMass}kg</span>
-              <span style={{ color: "#3b82f6" }}>除脂肪 {leanMass}kg</span>
+            {/* 基礎代謝 */}
+            <div className="bg-slate-50 border border-slate-100 rounded-xl p-2.5 text-center">
+              <p className="text-[8px] text-slate-400">基礎代謝</p>
+              <p className="text-xl font-black tabular-nums text-blue-600 leading-tight">{bmr ?? "—"}</p>
+              <p className="text-[8px] text-slate-400">kcal</p>
+            </div>
+            {/* 内臓脂肪 */}
+            <div className="bg-slate-50 border border-slate-100 rounded-xl p-2.5 text-center">
+              <p className="text-[8px] text-slate-400">内臓脂肪</p>
+              <p className={`text-xl font-black tabular-nums leading-tight ${
+                visceral_fat_level == null ? "text-slate-300"
+                : visceral_fat_level <= 9 ? "text-teal-600"
+                : visceral_fat_level <= 14 ? "text-amber-500" : "text-rose-500"
+              }`}>
+                {visceral_fat_level ?? "—"}
+              </p>
+              <p className={`text-[8px] ${visceral_fat_level == null ? "text-slate-300" : visceral_fat_level <= 9 ? "text-teal-500" : "text-amber-400"}`}>
+                {visceral_fat_level ? (visceral_fat_level <= 9 ? "標準" : visceral_fat_level <= 14 ? "やや高" : "高い") : "—"}
+              </p>
+            </div>
+            {/* SMI */}
+            <div className="bg-slate-50 border border-slate-100 rounded-xl p-2.5 text-center">
+              <p className="text-[8px] text-slate-400">SMI</p>
+              <p className={`text-xl font-black tabular-nums leading-tight ${smiOk === null ? "text-slate-300" : smiOk ? "text-blue-600" : "text-rose-400"}`}>
+                {smi ?? "—"}
+              </p>
+              <p className={`text-[8px] ${smiOk === null ? "text-slate-300" : smiOk ? "text-blue-500" : "text-rose-400"}`}>
+                {smiOk === null ? "—" : smiOk ? "標準以上" : "低い"}
+              </p>
             </div>
           </div>
-        )}
-      </div>
 
-      {/* ══ 筋肉部位アクティビティ ══ */}
-      {lastTrainedMuscles.length > 0 && (
-        <div>
-          <SectionTitle>部位別アクティビティ</SectionTitle>
-          <ResponsiveContainer width="100%" height={80}>
-            <BarChart data={muscleGroupData} layout="vertical" margin={{ left: 0, right: 8 }}>
-              <XAxis type="number" domain={[0, 100]} hide />
-              <YAxis type="category" dataKey="name" tick={{ fill: "#94a3b8", fontSize: 9 }} axisLine={false} tickLine={false} width={24} />
-              <Tooltip
-                contentStyle={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, fontSize: 9 }}
-                formatter={(v: number) => [`${Math.round(v)}%`, "活性度"]}
-              />
-              <Bar dataKey="value" radius={[0, 3, 3, 0]} barSize={8}>
-                {muscleGroupData.map((d, i) => (
-                  <Cell key={i} fill={d.trained ? "#3b82f6" : "#e2e8f0"} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      )}
-
-      {/* ══ バイタルサイン ══ */}
-      {(systolic_bp || resting_heart_rate || sleep_hours) && (
-        <div>
-          <SectionTitle>バイタル・コンディション</SectionTitle>
-          <div className="grid grid-cols-2 gap-2">
-            {systolic_bp && (
-              <div className="bg-slate-50 rounded-xl p-2.5 border border-slate-100">
-                <p className="text-[8px] text-slate-400">血圧</p>
-                <p className="text-base font-black tabular-nums leading-none" style={{ color: bpInfo.color }}>
-                  {systolic_bp}/{diastolic_bp ?? "—"}
-                  <span className="text-[8px] font-normal text-slate-400 ml-0.5">mmHg</span>
-                </p>
-                <p className="text-[8px] mt-0.5" style={{ color: bpInfo.color }}>{bpInfo.label}</p>
+          {/* ══ 内臓脂肪レベルスケール ══ */}
+          {visceral_fat_level != null && (
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <p className="text-[9px] text-slate-400 font-semibold">内臓脂肪レベル</p>
+                <p className="text-[9px] font-black text-slate-700 tabular-nums">{visceral_fat_level} / 15</p>
               </div>
-            )}
-            {resting_heart_rate && (
-              <div className="bg-slate-50 rounded-xl p-2.5 border border-slate-100">
-                <p className="text-[8px] text-slate-400">安静時心拍</p>
-                <p className="text-base font-black tabular-nums leading-none text-rose-500">
-                  {resting_heart_rate}
-                  <span className="text-[8px] font-normal text-slate-400 ml-0.5">bpm</span>
-                </p>
-                <p className="text-[8px] text-rose-400 mt-0.5">
-                  {resting_heart_rate < 60 ? "アスリート域" : resting_heart_rate < 70 ? "良好" : resting_heart_rate < 80 ? "標準" : "やや高め"}
-                </p>
-              </div>
-            )}
-            {sleep_hours && (
-              <div className="bg-slate-50 rounded-xl p-2.5 border border-slate-100">
-                <p className="text-[8px] text-slate-400">睡眠</p>
-                <p className="text-base font-black tabular-nums leading-none text-indigo-500">
-                  {sleep_hours}
-                  <span className="text-[8px] font-normal text-slate-400 ml-0.5">h</span>
-                </p>
-                <p className="text-[8px] text-indigo-400 mt-0.5">
-                  {sleep_hours >= 7 ? "十分" : sleep_hours >= 6 ? "やや不足" : "不足"}
-                </p>
-              </div>
-            )}
-            {condition_score && (
-              <div className="bg-slate-50 rounded-xl p-2.5 border border-slate-100">
-                <p className="text-[8px] text-slate-400">コンディション</p>
-                <p className="text-base font-black tabular-nums leading-none text-violet-500">
-                  {condition_score}
-                  <span className="text-[8px] font-normal text-slate-400 ml-0.5">/ 10</span>
-                </p>
-                {/* ドット表示 */}
-                <div className="flex gap-0.5 mt-1">
-                  {Array.from({ length: 10 }).map((_, i) => (
+              <div className="flex gap-0.5">
+                {Array.from({ length: 15 }).map((_, i) => {
+                  const lv = i + 1;
+                  const active = lv <= visceral_fat_level;
+                  const color = lv <= 9 ? "#22c55e" : lv <= 14 ? "#f59e0b" : "#ef4444";
+                  return (
                     <div
                       key={i}
-                      className="w-1.5 h-1.5 rounded-full"
-                      style={{ background: i < condition_score ? "#7c3aed" : "#e2e8f0" }}
+                      className="flex-1 h-3 rounded-sm transition-all"
+                      style={{ background: active ? color : "#e2e8f0" }}
                     />
-                  ))}
-                </div>
+                  );
+                })}
               </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* ══ 内臓脂肪レベル ══ */}
-      {visceral_fat_level != null && (
-        <div>
-          <SectionTitle>内臓脂肪レベル</SectionTitle>
-          <div className="flex items-center gap-3">
-            <p className="text-3xl font-black tabular-nums" style={{ color: visInfo.color }}>
-              {visceral_fat_level}
-            </p>
-            <div className="flex-1">
-              <div className="flex justify-between text-[8px] text-slate-300 mb-0.5">
-                <span>標準</span><span>やや高</span><span>高い</span>
-              </div>
-              <div className="h-2 rounded-full overflow-hidden flex">
-                <div className="flex-1 bg-green-200 rounded-l-full" />
-                <div className="w-8 bg-yellow-200" />
-                <div className="w-8 bg-red-200 rounded-r-full" />
-              </div>
-              {/* インジケーター */}
-              <div className="relative h-2 mt-0.5">
-                <div
-                  className="absolute w-1 h-2 rounded-full transition-all"
-                  style={{
-                    left: `${Math.min(95, (visceral_fat_level / 20) * 100)}%`,
-                    background: visInfo.color,
-                  }}
-                />
+              <div className="flex text-[8px] text-slate-300 mt-0.5 px-0.5">
+                <span className="flex-[9]">標準 (1–9)</span>
+                <span className="flex-[5] text-center">やや高 (10–14)</span>
+                <span className="flex-[1] text-right">高</span>
               </div>
             </div>
-            <span
-              className="text-[9px] font-bold px-2 py-0.5 rounded-full"
-              style={{ background: `${visInfo.color}18`, color: visInfo.color }}
-            >
-              {visInfo.label}
-            </span>
-          </div>
-        </div>
-      )}
+          )}
 
-      {/* ══ 目標対比 ══ */}
-      {(target_weight_kg || target_body_fat_pct) && (
-        <div>
-          <SectionTitle>目標達成度</SectionTitle>
-          <div className="space-y-2">
-            {target_weight_kg && weight_kg && (
-              <div>
-                <div className="flex justify-between text-[9px] mb-0.5">
-                  <span className="text-slate-400">体重</span>
-                  <span className="font-semibold text-slate-600">
-                    {weight_kg}kg → 目標 {target_weight_kg}kg
-                    <span className="ml-1 font-black" style={{ color: weight_kg > target_weight_kg ? "#ef4444" : "#22c55e" }}>
-                      ({weight_kg > target_weight_kg ? "-" : "+"}{Math.abs(+(weight_kg - target_weight_kg).toFixed(1))}kg)
-                    </span>
-                  </span>
+          {/* ══ バイタルサイン ══ */}
+          {(systolic_bp || resting_heart_rate || sleep_hours || condition_score) && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {systolic_bp && (
+                <div className="bg-slate-50 border border-slate-100 rounded-xl p-2.5 text-center">
+                  <p className="text-[8px] text-slate-400">血圧</p>
+                  <p className="text-sm font-black tabular-nums text-rose-500 leading-tight">
+                    {systolic_bp}
+                    <span className="text-[9px] font-semibold text-slate-400">/{diastolic_bp ?? "—"}</span>
+                  </p>
+                  <p className="text-[8px] text-slate-400">mmHg</p>
                 </div>
-                <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                  <div
-                    className="h-full rounded-full"
-                    style={{
-                      width: `${Math.min(100, Math.max(5, 100 - Math.abs(weight_kg - target_weight_kg) / weight_kg * 500))}%`,
-                      background: "#22c55e",
-                    }}
-                  />
+              )}
+              {resting_heart_rate && (
+                <div className="bg-slate-50 border border-slate-100 rounded-xl p-2.5 text-center">
+                  <p className="text-[8px] text-slate-400">安静時心拍</p>
+                  <p className="text-sm font-black tabular-nums text-rose-400 leading-tight">{resting_heart_rate}</p>
+                  <p className="text-[8px] text-slate-400">bpm · {resting_heart_rate < 60 ? "アスリート" : resting_heart_rate < 70 ? "良好" : "標準"}</p>
                 </div>
-              </div>
-            )}
-            {target_body_fat_pct && body_fat_pct && (
-              <div>
-                <div className="flex justify-between text-[9px] mb-0.5">
-                  <span className="text-slate-400">体脂肪率</span>
-                  <span className="font-semibold text-slate-600">
-                    {body_fat_pct}% → 目標 {target_body_fat_pct}%
-                    <span className="ml-1 font-black" style={{ color: body_fat_pct > target_body_fat_pct ? "#ef4444" : "#22c55e" }}>
-                      ({body_fat_pct > target_body_fat_pct ? "-" : "+"}{Math.abs(+(body_fat_pct - target_body_fat_pct).toFixed(1))}%)
-                    </span>
-                  </span>
+              )}
+              {sleep_hours && (
+                <div className="bg-slate-50 border border-slate-100 rounded-xl p-2.5 text-center">
+                  <p className="text-[8px] text-slate-400">睡眠時間</p>
+                  <p className="text-sm font-black tabular-nums text-indigo-500 leading-tight">{sleep_hours}</p>
+                  <p className="text-[8px] text-slate-400">h · {sleep_hours >= 7 ? "十分" : sleep_hours >= 6 ? "やや不足" : "不足"}</p>
                 </div>
-                <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                  <div
-                    className="h-full rounded-full"
-                    style={{
-                      width: `${Math.min(100, Math.max(5, 100 - Math.abs(body_fat_pct - target_body_fat_pct) * 8))}%`,
-                      background: fc,
-                    }}
-                  />
+              )}
+              {condition_score && (
+                <div className="bg-slate-50 border border-slate-100 rounded-xl p-2.5 text-center">
+                  <p className="text-[8px] text-slate-400">コンディション</p>
+                  <p className="text-sm font-black tabular-nums text-violet-500 leading-tight">
+                    {condition_score}<span className="text-[8px] font-normal text-slate-400">/10</span>
+                  </p>
+                  <div className="flex gap-0.5 justify-center mt-1">
+                    {Array.from({ length: 10 }).map((_, i) => (
+                      <div key={i} className="w-1 h-1 rounded-full" style={{ background: i < condition_score ? "#7c3aed" : "#e2e8f0" }} />
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          )}
         </div>
-      )}
+
+        {/* ══ 右: スコア + レーダー ══ */}
+        <div className="flex flex-col gap-4 items-center">
+
+          {/* 総合スコア */}
+          <div className="text-center w-full border border-slate-100 rounded-2xl p-3 bg-slate-50">
+            <p className="text-[9px] text-slate-400 uppercase tracking-widest">Overall Score</p>
+            <p className="text-6xl font-black tabular-nums text-blue-600 leading-none mt-1">{overall}</p>
+            <p className="text-[9px] text-slate-400 mt-0.5">/ 100</p>
+          </div>
+
+          {/* レーダーチャート */}
+          <div className="w-full">
+            <ResponsiveContainer width="100%" height={180}>
+              <RadarChart data={radarData} cx="50%" cy="50%" outerRadius={65}>
+                <PolarGrid stroke="#e2e8f0" />
+                <PolarAngleAxis dataKey="axis" tick={{ fill: "#94a3b8", fontSize: 9, fontWeight: 600 }} />
+                <Radar dataKey="score" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.18} strokeWidth={1.5} />
+              </RadarChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* 各軸スコアバー */}
+          <div className="w-full space-y-2">
+            {radarData.map((d) => (
+              <div key={d.axis}>
+                <div className="flex justify-between items-center mb-0.5">
+                  <span className="text-[9px] text-slate-500">{d.axis}</span>
+                  <span className="text-[10px] font-bold text-slate-600 tabular-nums">{d.score}</span>
+                </div>
+                <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all"
+                    style={{
+                      width: `${d.score}%`,
+                      background: d.score >= 70 ? "#3b82f6" : d.score >= 50 ? "#f59e0b" : "#ef4444",
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* 目標対比 */}
+          {(target_weight_kg || target_body_fat_pct) && (
+            <div className="w-full border-t border-slate-100 pt-3 space-y-2">
+              <p className="text-[9px] text-slate-400 font-semibold uppercase tracking-wider">目標対比</p>
+              {target_weight_kg && weight_kg && (() => {
+                const gap = +(weight_kg - target_weight_kg).toFixed(1);
+                const pct = Math.min(100, Math.max(5, 100 - Math.abs(gap) / weight_kg * 300));
+                return (
+                  <div>
+                    <div className="flex justify-between text-[9px] mb-0.5">
+                      <span className="text-slate-400">体重</span>
+                      <span className={`font-semibold ${gap > 0 ? "text-rose-500" : "text-teal-600"}`}>
+                        {gap > 0 ? "残り " : "達成! "}
+                        {Math.abs(gap)}kg
+                      </span>
+                    </div>
+                    <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                      <div className="h-full bg-teal-500 rounded-full" style={{ width: `${pct}%` }} />
+                    </div>
+                  </div>
+                );
+              })()}
+              {target_body_fat_pct && body_fat_pct && (() => {
+                const gap = +(body_fat_pct - target_body_fat_pct).toFixed(1);
+                const pct = Math.min(100, Math.max(5, 100 - Math.abs(gap) * 8));
+                return (
+                  <div>
+                    <div className="flex justify-between text-[9px] mb-0.5">
+                      <span className="text-slate-400">体脂肪率</span>
+                      <span className={`font-semibold ${gap > 0 ? "text-rose-500" : "text-teal-600"}`}>
+                        {gap > 0 ? "残り " : "達成! "}
+                        {Math.abs(gap)}%
+                      </span>
+                    </div>
+                    <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                      <div className="h-full bg-teal-500 rounded-full" style={{ width: `${pct}%` }} />
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

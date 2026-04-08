@@ -213,81 +213,76 @@ export default function ClientDashboard({
             lastSession={trainingSessions[0] ?? null}
           />
 
-          {/* メイン2カラム: 左=デジタルツイン / 右=KPI+グラフ */}
-          <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-3 items-start">
+          {/* ── Tanita Fit スタイル Body Analysis パネル（フルワイド） ── */}
+          <DigitalTwin
+            weight_kg={latestBody?.weight_kg ?? null}
+            body_fat_pct={latestBody?.body_fat_pct ?? null}
+            muscle_mass_kg={latestBody?.muscle_mass_kg ?? null}
+            bmi={latestBody?.bmi ?? null}
+            bone_mass_kg={latestBody?.bone_mass_kg ?? null}
+            visceral_fat_level={latestBody?.visceral_fat_level ?? null}
+            condition_score={latestBody?.condition_score ?? null}
+            sleep_hours={latestBody?.sleep_hours ?? null}
+            resting_heart_rate={latestBody?.resting_heart_rate ?? null}
+            systolic_bp={latestBody?.systolic_bp ?? null}
+            diastolic_bp={latestBody?.diastolic_bp ?? null}
+            prev_weight_kg={bodyRecords[bodyRecords.length - 2]?.weight_kg ?? null}
+            prev_body_fat_pct={bodyRecords[bodyRecords.length - 2]?.body_fat_pct ?? null}
+            prev_muscle_mass_kg={bodyRecords[bodyRecords.length - 2]?.muscle_mass_kg ?? null}
+            first_weight_kg={firstBody?.weight_kg ?? null}
+            first_body_fat_pct={firstBody?.body_fat_pct ?? null}
+            first_muscle_mass_kg={firstBody?.muscle_mass_kg ?? null}
+            height_cm={client.height_cm ?? null}
+            gender={client.gender ?? null}
+            birth_year={client.birth_year ?? null}
+            recorded_at={latestBody?.recorded_at ?? null}
+            target_weight_kg={goals?.target_weight_kg ?? null}
+            target_body_fat_pct={goals?.target_body_fat_pct ?? null}
+            lastTrainedMuscles={
+              trainingSessions[0]?.training_sets
+                ? ([...new Set(trainingSessions[0].training_sets.map((t: any) => t.muscle_group).filter(Boolean))] as string[])
+                : []
+            }
+          />
 
-            {/* ── デジタルツインパネル ── */}
-            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-5 flex flex-col items-center">
-              <p className="text-[10px] font-semibold text-slate-400 tracking-widest mb-4 uppercase">Digital Twin</p>
-              <DigitalTwin
-                weight_kg={latestBody?.weight_kg ?? null}
-                body_fat_pct={latestBody?.body_fat_pct ?? null}
-                muscle_mass_kg={latestBody?.muscle_mass_kg ?? null}
-                target_body_fat_pct={goals?.target_body_fat_pct ?? null}
-                target_weight_kg={goals?.target_weight_kg ?? null}
-                condition_score={latestBody?.condition_score ?? null}
-                bmi={latestBody?.bmi ?? null}
-                bone_mass_kg={latestBody?.bone_mass_kg ?? null}
-                visceral_fat_level={latestBody?.visceral_fat_level ?? null}
-                systolic_bp={latestBody?.systolic_bp ?? null}
-                diastolic_bp={latestBody?.diastolic_bp ?? null}
-                resting_heart_rate={latestBody?.resting_heart_rate ?? null}
-                sleep_hours={latestBody?.sleep_hours ?? null}
-                lastTrainedMuscles={
-                  trainingSessions[0]?.training_sets
-                    ? ([...new Set(trainingSessions[0].training_sets.map((t: any) => t.muscle_group).filter(Boolean))] as string[])
-                    : []
-                }
+          {/* ── KPI グリッド ── */}
+          <KPIGrid
+            latestBody={latestBody}
+            weightDiff={weightDiff}
+            fatDiff={fatDiff}
+            trainingSessions={trainingSessions}
+            totalVolume={totalVolume}
+            avgCalories={avgCalories}
+            goals={goals}
+          />
+
+          {/* ── 体重グラフ ＋ PFC ── */}
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+            {bodyRecords.length >= 3 && (
+              <WeightSparkCard records={bodyRecords} goals={goals} />
+            )}
+            {avgCalories != null && (
+              <PFCBarCard mealRecords={recentMeals} goals={goals} />
+            )}
+          </div>
+
+          {/* ② コンディション × ボリューム相関グラフ */}
+          <ConditionVolumeChart
+            bodyRecords={bodyRecords}
+            trainingSessions={trainingSessions}
+          />
+
+          {/* ── 直近トレーニング ＋ アセスメント ── */}
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+            {trainingSessions[0]?.training_sets?.length > 0 && (
+              <LastSessionCard
+                session={trainingSessions[0]}
+                allSessions={trainingSessions}
               />
-              {latestBody && (
-                <p className="text-[9px] text-slate-300 mt-3">
-                  最終計測: {format(parseISO(latestBody.recorded_at), "M月d日", { locale: ja })}
-                </p>
-              )}
-            </div>
-
-            {/* ── 右カラム: KPI + グラフ ── */}
-            <div className="space-y-3">
-              {/* KPIグリッド */}
-              <KPIGrid
-                latestBody={latestBody}
-                weightDiff={weightDiff}
-                fatDiff={fatDiff}
-                trainingSessions={trainingSessions}
-                totalVolume={totalVolume}
-                avgCalories={avgCalories}
-                goals={goals}
-              />
-
-              {/* 体重グラフ ＋ PFC */}
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
-                {bodyRecords.length >= 3 && (
-                  <WeightSparkCard records={bodyRecords} goals={goals} />
-                )}
-                {avgCalories != null && (
-                  <PFCBarCard mealRecords={recentMeals} goals={goals} />
-                )}
-              </div>
-
-              {/* ② コンディション × ボリューム相関グラフ */}
-              <ConditionVolumeChart
-                bodyRecords={bodyRecords}
-                trainingSessions={trainingSessions}
-              />
-
-              {/* 直近トレーニング ＋ アセスメント */}
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
-                {trainingSessions[0]?.training_sets?.length > 0 && (
-                  <LastSessionCard
-                    session={trainingSessions[0]}
-                    allSessions={trainingSessions}
-                  />
-                )}
-                {assessment && (
-                  <AssessmentPreviewCard assessment={assessment} onDetail={() => setActiveTab("AI分析")} />
-                )}
-              </div>
-            </div>
+            )}
+            {assessment && (
+              <AssessmentPreviewCard assessment={assessment} onDetail={() => setActiveTab("AI分析")} />
+            )}
           </div>
         </div>
 
