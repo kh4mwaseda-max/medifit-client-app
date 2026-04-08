@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import {
-  LineChart, Line, BarChart, Bar,
+  LineChart, Line, BarChart, Bar, ComposedChart,
   XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, ReferenceLine,
 } from "recharts";
@@ -204,6 +204,15 @@ export default function ClientDashboard({
         {/* ── サマリー ── */}
         <div className={activeTab === "サマリー" ? "block space-y-3" : "hidden print:block print:space-y-3"}>
 
+          {/* ① ファーストビュー：開始からの変化ヒーローカード */}
+          <ProgressHeroCard
+            firstBody={firstBody}
+            latestBody={latestBody}
+            dayCount={dayCount}
+            goals={goals}
+            lastSession={trainingSessions[0] ?? null}
+          />
+
           {/* メイン2カラム: 左=デジタルツイン / 右=KPI+グラフ */}
           <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-3 items-start">
 
@@ -260,10 +269,19 @@ export default function ClientDashboard({
                 )}
               </div>
 
+              {/* ② コンディション × ボリューム相関グラフ */}
+              <ConditionVolumeChart
+                bodyRecords={bodyRecords}
+                trainingSessions={trainingSessions}
+              />
+
               {/* 直近トレーニング ＋ アセスメント */}
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
                 {trainingSessions[0]?.training_sets?.length > 0 && (
-                  <LastSessionCard session={trainingSessions[0]} />
+                  <LastSessionCard
+                    session={trainingSessions[0]}
+                    allSessions={trainingSessions}
+                  />
                 )}
                 {assessment && (
                   <AssessmentPreviewCard assessment={assessment} onDetail={() => setActiveTab("AI分析")} />
@@ -531,12 +549,27 @@ function WeightSparkCard({ records, goals }: { records: any[]; goals: any }) {
 
 // ══ 直近セッション ═════════════════════════════════════════════════
 
-function LastSessionCard({ session }: { session: any }) {
+function LastSessionCard({ session, allSessions }: { session: any; allSessions: any[] }) {
   const grouped: Record<string, any[]> = {};
   for (const s of session.training_sets ?? []) {
     const k = s.exercise_name ?? "不明";
     if (!grouped[k]) grouped[k] = [];
     grouped[k].push(s);
+  }
+
+  // ⑤ セッション間隔
+  const daysSince = Math.floor(
+    (Date.now() - new Date(session.session_date).getTime()) / (1000 * 60 * 60 * 24)
+  );
+
+  // ④ PR判定: 直近セッション以外の全セッションから種目別過去ベスト算出
+  const prevBest = new Map<string, number>();
+  for (const s of allSessions.slice(1)) {
+    for (const t of s.training_sets ?? []) {
+      if (!t.exercise_name) continue;
+      const cur = prevBest.get(t.exercise_name) ?? 0;
+      if ((t.weight_kg ?? 0) > cur) prevBest.set(t.exercise_name, t.weight_kg);
+    }
   }
 
   return (
@@ -545,19 +578,38 @@ function LastSessionCard({ session }: { session: any }) {
         <p className="text-xs font-semibold text-slate-500 flex items-center gap-1">
           <span>🏋</span> 直近のトレーニング
         </p>
-        <p className="text-[10px] text-slate-400">
-          {format(parseISO(session.session_date), "M月d日(E)", { locale: ja })}
-        </p>
+        <div className="text-right">
+          <p className="text-[10px] text-slate-400">
+            {format(parseISO(session.session_date), "M月d日(E)", { locale: ja })}
+          </p>
+          {daysSince === 0 ? (
+            <p className="text-[9px] text-teal-500 font-semibold">今日</p>
+          ) : (
+            <p className="text-[9px] text-slate-300">前回から {daysSince}日</p>
+          )}
+        </div>
       </div>
       <div className="space-y-2.5">
         {Object.entries(grouped).map(([exercise, sets]) => {
           const vol = sets.reduce((s, t) => s + (t.weight_kg ?? 0) * (t.reps ?? 0), 0);
           const maxW = Math.max(...sets.map((t) => t.weight_kg ?? 0));
+          const isPR = prevBest.has(exercise) && maxW > (prevBest.get(exercise) ?? 0);
+          const isFirst = !prevBest.has(exercise);
           return (
             <div key={exercise} className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 <span className="text-xs font-medium text-slate-700">{exercise}</span>
                 <span className="text-[10px] text-slate-400">{sets.length}set</span>
+                {isPR && (
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200">
+                    🏆 PR
+                  </span>
+                )}
+                {isFirst && (
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-500 border border-blue-200">
+                    NEW
+                  </span>
+                )}
               </div>
               <div className="flex gap-3 text-[11px]">
                 <span className="text-slate-500">最高 <strong className="text-slate-700">{maxW}kg</strong></span>
@@ -682,6 +734,147 @@ function BodyMetricsGrid({ record, goals, inline }: { record: any; goals: any; i
   return (
     <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm mt-3">
       {inner}
+    </div>
+  );
+}
+
+// ══ ① ファーストビュー差分ヒーローカード ══════════════════════════
+
+function ProgressHeroCard({
+  firstBody, latestBody, dayCount, goals, lastSession,
+}: {
+  firstBody: any; latestBody: any; dayCount: number; goals: any; lastSession: any;
+}) {
+  if (!firstBody || !latestBody || firstBody === latestBody) return null;
+
+  const weightDiff = latestBody.weight_kg != null && firstBody.weight_kg != null
+    ? +(latestBody.weight_kg - firstBody.weight_kg).toFixed(1) : null;
+  const fatDiff = latestBody.body_fat_pct != null && firstBody.body_fat_pct != null
+    ? +(latestBody.body_fat_pct - firstBody.body_fat_pct).toFixed(1) : null;
+  const muscleDiff = latestBody.muscle_mass_kg != null && firstBody.muscle_mass_kg != null
+    ? +(latestBody.muscle_mass_kg - firstBody.muscle_mass_kg).toFixed(1) : null;
+
+  if (weightDiff == null && fatDiff == null) return null;
+
+  const remainingKg = goals?.target_weight_kg != null && latestBody.weight_kg != null
+    ? +(latestBody.weight_kg - goals.target_weight_kg).toFixed(1) : null;
+
+  return (
+    <div className="bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-700 rounded-2xl p-5 shadow-sm text-white">
+      <div className="flex items-start justify-between">
+        {/* 左: 体重差分（メイン） */}
+        <div>
+          <p className="text-[10px] text-blue-200 uppercase tracking-widest font-semibold">開始からの変化</p>
+          {weightDiff != null && (
+            <div className="flex items-baseline gap-1 mt-1">
+              <span className="text-6xl font-black tabular-nums leading-none">
+                {weightDiff > 0 ? "+" : ""}{weightDiff}
+              </span>
+              <span className="text-xl text-blue-200 font-semibold">kg</span>
+            </div>
+          )}
+          <p className="text-[11px] text-blue-200 mt-2">
+            {dayCount}日間 · スタート {firstBody.weight_kg}kg → 現在 {latestBody.weight_kg}kg
+          </p>
+          {remainingKg != null && Math.abs(remainingKg) > 0.1 && (
+            <p className="text-[11px] text-amber-200 mt-1">
+              目標まで残り <strong>{Math.abs(remainingKg)}kg</strong>
+            </p>
+          )}
+        </div>
+
+        {/* 右: 体脂肪・筋肉 */}
+        <div className="space-y-3 text-right">
+          {fatDiff != null && (
+            <div>
+              <p className="text-[9px] text-blue-300">体脂肪率</p>
+              <p className={`text-2xl font-black tabular-nums ${fatDiff < 0 ? "text-teal-300" : "text-rose-300"}`}>
+                {fatDiff > 0 ? "+" : ""}{fatDiff}
+                <span className="text-xs font-normal text-blue-200">%</span>
+              </p>
+            </div>
+          )}
+          {muscleDiff != null && (
+            <div>
+              <p className="text-[9px] text-blue-300">筋肉量</p>
+              <p className={`text-2xl font-black tabular-nums ${muscleDiff > 0 ? "text-teal-300" : "text-rose-300"}`}>
+                {muscleDiff > 0 ? "+" : ""}{muscleDiff}
+                <span className="text-xs font-normal text-blue-200">kg</span>
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ══ ② コンディション × ボリューム相関グラフ ══════════════════════
+
+function ConditionVolumeChart({
+  bodyRecords, trainingSessions,
+}: {
+  bodyRecords: any[]; trainingSessions: any[];
+}) {
+  const volByDate = new Map<string, number>();
+  for (const s of trainingSessions) {
+    const vol = s.training_sets?.reduce(
+      (sum: number, t: any) => sum + (t.weight_kg ?? 0) * (t.reps ?? 0), 0
+    ) ?? 0;
+    const d = s.session_date;
+    volByDate.set(d, (volByDate.get(d) ?? 0) + vol);
+  }
+
+  const data = bodyRecords
+    .filter((b) => b.condition_score != null)
+    .map((b) => {
+      const date = b.recorded_at.slice(0, 10);
+      return {
+        date: format(parseISO(b.recorded_at), "M/d"),
+        condition: b.condition_score as number,
+        volume: +(((volByDate.get(date) ?? 0) / 1000).toFixed(1)),
+      };
+    })
+    .slice(-20);
+
+  if (data.length < 3) return null;
+
+  return (
+    <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+      <div className="flex items-center justify-between mb-1">
+        <p className="text-xs font-semibold text-slate-500 flex items-center gap-1">
+          <span>📊</span> コンディション × ボリューム
+        </p>
+        <p className="text-[9px] text-slate-400">追い込みすぎチェック</p>
+      </div>
+      <p className="text-[9px] text-slate-400 mb-3">
+        <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-violet-500 inline-block" />紫線 = コンディション(0–10)</span>
+        <span className="ml-3 inline-flex items-center gap-1"><span className="w-2 h-2 rounded bg-blue-100 inline-block" />青棒 = トレボリューム(t)</span>
+      </p>
+      <ResponsiveContainer width="100%" height={130}>
+        <ComposedChart data={data}>
+          <XAxis dataKey="date" tick={{ fill: "#94a3b8", fontSize: 9 }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+          <YAxis yAxisId="cond" domain={[0, 10]} tick={{ fill: "#94a3b8", fontSize: 9 }} axisLine={false} tickLine={false} width={16} />
+          <YAxis yAxisId="vol" orientation="right" tick={{ fill: "#94a3b8", fontSize: 9 }} axisLine={false} tickLine={false} width={28} unit="t" />
+          <Tooltip
+            contentStyle={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, fontSize: 10 }}
+            formatter={(v: number, name: string) =>
+              name === "コンディション" ? [`${v}/10`, name] : [`${v}t`, name]
+            }
+          />
+          <Bar yAxisId="vol" dataKey="volume" fill="#dbeafe" radius={[2, 2, 0, 0]} name="ボリューム" />
+          <Line
+            yAxisId="cond"
+            type="monotone"
+            dataKey="condition"
+            stroke="#7c3aed"
+            strokeWidth={2}
+            dot={{ fill: "#7c3aed", r: 2 }}
+            name="コンディション"
+            connectNulls
+          />
+        </ComposedChart>
+      </ResponsiveContainer>
     </div>
   );
 }

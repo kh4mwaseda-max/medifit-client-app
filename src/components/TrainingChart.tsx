@@ -6,6 +6,27 @@ import { format, parseISO } from "date-fns";
 import { ja } from "date-fns/locale";
 
 export default function TrainingChart({ sessions }: { sessions: any[] }) {
+  // ④ 種目別PRマップ: sessions[0]が最新。それ以降の全セッションから過去ベストを算出
+  const prevBest = new Map<string, number>();
+  for (const s of sessions.slice(1)) {
+    for (const t of s.training_sets ?? []) {
+      if (!t.exercise_name) continue;
+      const cur = prevBest.get(t.exercise_name) ?? 0;
+      if ((t.weight_kg ?? 0) > cur) prevBest.set(t.exercise_name, t.weight_kg);
+    }
+  }
+  const latestMaxByExercise = new Map<string, number>();
+  for (const t of sessions[0]?.training_sets ?? []) {
+    if (!t.exercise_name) continue;
+    const cur = latestMaxByExercise.get(t.exercise_name) ?? 0;
+    if ((t.weight_kg ?? 0) > cur) latestMaxByExercise.set(t.exercise_name, t.weight_kg);
+  }
+  const prExercises = new Set<string>();
+  const newExercises = new Set<string>();
+  for (const [ex, maxW] of latestMaxByExercise) {
+    if (!prevBest.has(ex)) newExercises.add(ex);
+    else if (maxW > (prevBest.get(ex) ?? 0)) prExercises.add(ex);
+  }
   const [selectedExercise, setSelectedExercise] = useState<string | null>(null);
   const [chartMode, setChartMode] = useState<"volume" | "maxWeight">("volume");
 
@@ -87,15 +108,18 @@ export default function TrainingChart({ sessions }: { sessions: any[] }) {
           <div className="flex gap-2 flex-wrap">
             {exercises.map((ex) => (
               <button
+                type="button"
                 key={ex}
                 onClick={() => setSelectedExercise(selectedExercise === ex ? null : ex)}
-                className={`px-3 py-1.5 rounded-full text-xs transition-colors ${
+                className={`px-3 py-1.5 rounded-full text-xs transition-colors flex items-center gap-1 ${
                   selectedExercise === ex
                     ? "bg-green-500 text-black font-medium"
                     : "bg-gray-800 text-gray-400 hover:bg-gray-700"
                 }`}
               >
                 {ex}
+                {prExercises.has(ex) && <span className="text-[9px] font-bold text-amber-400">🏆</span>}
+                {newExercises.has(ex) && <span className="text-[9px] font-bold text-blue-400">NEW</span>}
               </button>
             ))}
           </div>
@@ -108,6 +132,7 @@ export default function TrainingChart({ sessions }: { sessions: any[] }) {
                 <div className="flex bg-gray-800 rounded-lg p-0.5 gap-0.5">
                   {(["volume", "maxWeight"] as const).map((mode) => (
                     <button
+                      type="button"
                       key={mode}
                       onClick={() => setChartMode(mode)}
                       className={`px-3 py-1 rounded-md text-xs transition-colors ${
