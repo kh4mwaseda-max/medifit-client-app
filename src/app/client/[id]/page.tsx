@@ -16,7 +16,7 @@ export default async function ClientPage({ params }: PageProps) {
   const supabase = createServerClient();
   const { data: client } = await supabase
     .from("clients")
-    .select("id, name, goal, start_date")
+    .select("id, name, goal, start_date, height_cm, gender, birth_year, health_concerns")
     .eq("id", id)
     .single();
 
@@ -29,8 +29,7 @@ export default async function ClientPage({ params }: PageProps) {
     return <PinGate clientId={id} clientName={client.name} />;
   }
 
-  // 全データを並列取得
-  const [bodyRecords, trainingSessions, mealRecords, bodyPhotos, latestAssessment] =
+  const [bodyRecords, trainingSessions, mealRecords, bodyPhotos, latestAssessment, goalsRes] =
     await Promise.all([
       supabase
         .from("body_records")
@@ -49,7 +48,7 @@ export default async function ClientPage({ params }: PageProps) {
         .select("*")
         .eq("client_id", id)
         .order("meal_date", { ascending: false })
-        .limit(60),
+        .limit(90),
       supabase
         .from("body_photos")
         .select("*")
@@ -64,6 +63,13 @@ export default async function ClientPage({ params }: PageProps) {
         .order("generated_at", { ascending: false })
         .limit(1)
         .single(),
+      supabase
+        .from("client_goals")
+        .select("*")
+        .eq("client_id", id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .single(),
     ]);
 
   return (
@@ -74,6 +80,7 @@ export default async function ClientPage({ params }: PageProps) {
       mealRecords={mealRecords.data ?? []}
       bodyPhotos={bodyPhotos.data ?? []}
       assessment={latestAssessment.data ?? null}
+      goals={goalsRes.data ?? null}
     />
   );
 }
