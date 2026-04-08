@@ -138,7 +138,7 @@ export default function ClientDashboard({
 
       {/* ══ ヘッダー ══════════════════════════════════════════════ */}
       <header className="bg-white border-b border-slate-200 px-4 py-3 sticky top-0 z-20 shadow-sm print:shadow-none">
-        <div className="max-w-3xl mx-auto flex items-center justify-between">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
           <Logo size="sm" />
           <div className="flex items-center gap-3">
             <div className="text-right">
@@ -160,7 +160,7 @@ export default function ClientDashboard({
 
       {/* ══ クライアントバー ══════════════════════════════════════ */}
       <div className="print:hidden bg-white border-b border-slate-100 px-4 py-2.5">
-        <div className="max-w-3xl mx-auto">
+        <div className="max-w-7xl mx-auto">
           <p className="text-slate-800 font-semibold text-sm">
             {client.name}
             <span className="text-slate-400 font-normal text-xs ml-1.5">さんの健康ダッシュボード</span>
@@ -175,7 +175,7 @@ export default function ClientDashboard({
 
       {/* ══ タブナビ ══════════════════════════════════════════════ */}
       <nav className="print:hidden bg-white border-b border-slate-200 px-2 sticky top-[57px] z-10">
-        <div className="max-w-3xl mx-auto flex overflow-x-auto">
+        <div className="max-w-7xl mx-auto flex overflow-x-auto">
           {TABS.map(({ id, icon, label }) => {
             const active = activeTab === id;
             return (
@@ -198,7 +198,7 @@ export default function ClientDashboard({
       </nav>
 
       {/* ══ メインコンテンツ ══════════════════════════════════════ */}
-      <main className="max-w-3xl mx-auto px-3 py-4 space-y-3">
+      <main className="max-w-7xl mx-auto px-4 py-4 space-y-3">
 
         {/* ── サマリー ── */}
         <div className={activeTab === "サマリー" ? "block space-y-3" : "hidden print:block print:space-y-3"}>
@@ -213,34 +213,39 @@ export default function ClientDashboard({
             goals={goals}
           />
 
-          {/* ミニチャート：体重スパークライン */}
-          {bodyRecords.length >= 3 && (
-            <WeightSparkCard records={bodyRecords} goals={goals} />
-          )}
+          {/* 2カラムグリッド：体重グラフ ＋ PFC */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+            {bodyRecords.length >= 3 && (
+              <WeightSparkCard records={bodyRecords} goals={goals} />
+            )}
+            {avgCalories != null && (
+              <PFCBarCard mealRecords={recentMeals} goals={goals} />
+            )}
+          </div>
 
-          {/* 直近トレーニング */}
-          {trainingSessions[0]?.training_sets?.length > 0 && (
-            <LastSessionCard session={trainingSessions[0]} />
-          )}
-
-          {/* 食事PFCバー */}
-          {avgCalories != null && (
-            <PFCBarCard mealRecords={recentMeals} goals={goals} />
-          )}
-
-          {/* アセスメントプレビュー */}
-          {assessment && (
-            <AssessmentPreviewCard assessment={assessment} onDetail={() => setActiveTab("AI分析")} />
-          )}
+          {/* 2カラムグリッド：直近トレーニング ＋ アセスメント */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+            {trainingSessions[0]?.training_sets?.length > 0 && (
+              <LastSessionCard session={trainingSessions[0]} />
+            )}
+            {assessment && (
+              <AssessmentPreviewCard assessment={assessment} onDetail={() => setActiveTab("AI分析")} />
+            )}
+          </div>
         </div>
 
         {/* ── 身体データ ── */}
-        <div className={activeTab === "身体データ" ? "block" : "hidden"}>
-          <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm">
-            <BodyChart records={bodyRecords} />
+        <div className={activeTab === "身体データ" ? "block space-y-3" : "hidden"}>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+            <div className="lg:col-span-2 bg-white rounded-2xl p-4 border border-slate-200 shadow-sm">
+              <BodyChart records={bodyRecords} />
+            </div>
+            {latestBody && (
+              <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm">
+                <BodyMetricsGrid record={latestBody} goals={goals} inline />
+              </div>
+            )}
           </div>
-          {/* 最新計測値グリッド */}
-          {latestBody && <BodyMetricsGrid record={latestBody} goals={goals} />}
         </div>
 
         {/* ── トレーニング ── */}
@@ -384,7 +389,7 @@ function KPIGrid({ latestBody, weightDiff, fatDiff, trainingSessions, totalVolum
   ];
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+    <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
       {cards.map((c) => (
         <KPICard key={c.label} {...c} />
       ))}
@@ -600,7 +605,7 @@ function PFCBarCard({ mealRecords, goals }: { mealRecords: any[]; goals: any }) 
 
 // ══ 最新計測値グリッド（身体データタブ） ══════════════════════════
 
-function BodyMetricsGrid({ record, goals }: { record: any; goals: any }) {
+function BodyMetricsGrid({ record, goals, inline }: { record: any; goals: any; inline?: boolean }) {
   const metrics = [
     { label: "体重",       value: record.weight_kg,          unit: "kg", target: goals?.target_weight_kg },
     { label: "体脂肪率",   value: record.body_fat_pct,       unit: "%",  target: goals?.target_body_fat_pct },
@@ -614,10 +619,10 @@ function BodyMetricsGrid({ record, goals }: { record: any; goals: any }) {
 
   if (metrics.length === 0) return null;
 
-  return (
-    <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm mt-3">
+  const inner = (
+    <>
       <p className="text-xs font-semibold text-slate-500 mb-3">最新計測値 · {format(parseISO(record.recorded_at), "M月d日", { locale: ja })}</p>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 gap-2">
         {metrics.map(({ label, value, unit, target }) => (
           <div key={label} className="bg-slate-50 rounded-xl p-2.5 border border-slate-100">
             <p className="text-[9px] text-slate-400">{label}</p>
@@ -630,6 +635,14 @@ function BodyMetricsGrid({ record, goals }: { record: any; goals: any }) {
           </div>
         ))}
       </div>
+    </>
+  );
+
+  if (inline) return inner;
+
+  return (
+    <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm mt-3">
+      {inner}
     </div>
   );
 }
