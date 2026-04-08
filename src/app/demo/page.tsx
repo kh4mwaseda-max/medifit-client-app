@@ -175,8 +175,8 @@ export default function DemoPage() {
   return (
     <div>
       {/* デモバナー */}
-      <div className="bg-amber-500/10 border-b border-amber-500/20 px-4 py-2 text-center">
-        <p className="text-amber-400 text-xs font-medium">
+      <div className="bg-blue-50 border-b border-blue-100 px-4 py-2 text-center">
+        <p className="text-blue-500 text-xs font-medium">
           🎯 これはデモページです。すべてのデータはサンプルです。
         </p>
       </div>

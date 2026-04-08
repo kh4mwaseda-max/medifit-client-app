@@ -35,50 +35,50 @@ export default function PinGate({ clientId, clientName }: Props) {
   };
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center p-8 bg-[#0a0a0f]">
+    <main className="min-h-screen flex flex-col items-center justify-center p-8 bg-slate-50">
       <div className="w-full max-w-sm space-y-8">
 
         {/* ロゴ */}
         <div className="flex flex-col items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center shadow-xl shadow-emerald-900/40">
-            <span className="text-black text-xl font-black leading-none">A</span>
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-sky-400 flex items-center justify-center shadow-lg shadow-blue-200">
+            <span className="text-white text-2xl font-black leading-none">A</span>
           </div>
           <div className="text-center">
-            <h1 className="text-xl font-bold text-white tracking-tight">AllYourFit</h1>
-            <p className="mt-1 text-sm text-gray-500">{clientName} さんの進捗レポート</p>
+            <h1 className="text-xl font-bold text-slate-800 tracking-tight">AllYourFit</h1>
+            <p className="mt-1 text-sm text-slate-500">{clientName} さんの健康ダッシュボード</p>
           </div>
         </div>
 
         {/* PINフォーム */}
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-1.5">
-            <label className="block text-xs text-gray-500 text-center">PINコードを入力</label>
+        <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 space-y-4">
+          <p className="text-xs text-slate-400 text-center">PINコードを入力してアクセス</p>
+          <form onSubmit={handleSubmit} className="space-y-4">
             <input
               type="password"
               inputMode="numeric"
               maxLength={6}
               value={pin}
               onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
-              className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-4 text-center text-3xl tracking-[0.5em] text-white focus:outline-none focus:border-emerald-500/60 transition-colors"
+              className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-4 text-center text-3xl tracking-[0.5em] text-slate-800 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all"
               placeholder="••••"
               autoFocus
             />
-          </div>
 
-          {error && (
-            <p className="text-rose-400 text-sm text-center">PINが正しくありません</p>
-          )}
+            {error && (
+              <p className="text-rose-500 text-sm text-center">PINが正しくありません</p>
+            )}
 
-          <button
-            type="submit"
-            disabled={pin.length < 4 || loading}
-            className="w-full bg-emerald-500 hover:bg-emerald-400 disabled:bg-white/5 disabled:text-gray-600 text-black font-semibold py-3.5 rounded-2xl transition-colors text-sm"
-          >
-            {loading ? "確認中..." : "開く"}
-          </button>
-        </form>
+            <button
+              type="submit"
+              disabled={pin.length < 4 || loading}
+              className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-100 disabled:text-slate-400 text-white font-semibold py-3.5 rounded-2xl transition-colors text-sm shadow-md shadow-blue-100"
+            >
+              {loading ? "確認中..." : "開く"}
+            </button>
+          </form>
+        </div>
 
-        <p className="text-center text-xs text-gray-700">
+        <p className="text-center text-xs text-slate-400">
           PINはトレーナーから共有されています
         </p>
       </div>
