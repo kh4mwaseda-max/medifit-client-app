@@ -73,9 +73,112 @@ export interface PHRInput {
   } | null;
 }
 
-// TODO: Claude API クレジット補充後に実装
-export async function generateRecommendation(_input: PHRInput): Promise<RecommendationResult> {
-  throw new Error("NOT_IMPLEMENTED: Claude API クレジットを補充後に実装してください");
+export async function generateRecommendation(input: PHRInput): Promise<RecommendationResult> {
+  // Server-side only — called from API route
+  const Anthropic = (await import("@anthropic-ai/sdk")).default;
+  const anthropic = new Anthropic();
+
+  const latest = input.latest_body;
+  const trainingSummary = input.training_sessions
+    .slice(0, 5)
+    .map((s) => {
+      const vol = s.training_sets.reduce(
+        (sum, t) => sum + (t.weight_kg ?? 0) * (t.reps ?? 0),
+        0
+      );
+      return `${s.session_date}: ${s.training_sets.map((t) => t.exercise_name).join("・")} (Vol ${vol}kg)`;
+    })
+    .join("\n");
+
+  const prompt = `あなたはパーソナルトレーナーのアシスタントAIです。
+以下のPHRデータをもとに、クライアントへの提案・リスク分析レポートをJSON形式で生成してください。
+
+【クライアント基本情報】
+名前: ${input.client.name}
+目標: ${input.client.goal ?? "未設定"}
+開始日: ${input.client.start_date}
+
+【最新身体データ】
+体重: ${latest?.weight_kg ?? "未記録"} kg
+体脂肪率: ${latest?.body_fat_pct ?? "未記録"} %
+筋肉量: ${latest?.muscle_mass_kg ?? "未記録"} kg
+収縮期血圧: ${latest?.blood_pressure_sys ?? "未記録"} mmHg
+拡張期血圧: ${latest?.blood_pressure_dia ?? "未記録"} mmHg
+睡眠時間: ${latest?.sleep_hours ?? "未記録"} 時間
+コンディション: ${latest?.condition_score ?? "未記録"} / 10
+
+【体重・体脂肪推移（直近）】
+${input.body_trend
+  .slice(0, 10)
+  .map((b) => `${b.recorded_at.split("T")[0]}: ${b.weight_kg ?? "-"}kg / ${b.body_fat_pct ?? "-"}%`)
+  .join("\n")}
+
+【直近トレーニング（セッション数: ${input.training_sessions.length}回）】
+${trainingSummary || "記録なし"}
+
+【食事（直近平均）】
+カロリー: ${input.meal_summary?.avg_calories ?? "未記録"} kcal
+タンパク質: ${input.meal_summary?.avg_protein_g ?? "未記録"} g
+脂質: ${input.meal_summary?.avg_fat_g ?? "未記録"} g
+炭水化物: ${input.meal_summary?.avg_carbs_g ?? "未記録"} g
+
+以下のJSON形式のみで回答してください（日本語）。JSON以外のテキストは一切含めないこと。
+
+{
+  "generated_at": "<ISO 8601 現在時刻>",
+  "overall_score": <0-100の整数>,
+  "summary": "<総合評価サマリー 100字以内>",
+  "supplements": [
+    {
+      "name": "<サプリ名>",
+      "reason": "<推奨理由 データに基づく>",
+      "timing": "<摂取タイミング>",
+      "priority": "high|medium|low",
+      "affiliate_keyword": "<EC検索用キーワード（省略可）>"
+    }
+  ],
+  "foods": [
+    {
+      "food_name": "<食品名>",
+      "reason": "<推奨理由>",
+      "target_amount": "<1日の目安量>",
+      "priority": "high|medium|low"
+    }
+  ],
+  "risks": [
+    {
+      "category": "obesity|musculoskeletal|nutrition|sleep|cardiovascular",
+      "label": "<リスク名（日本語）>",
+      "level": "low|medium|high",
+      "current_score": <0-100の整数（高いほど健康）>,
+      "description": "<リスクの説明 データに基づく 80字以内>"
+    }
+  ],
+  "actions": [
+    {
+      "risk_category": "obesity|musculoskeletal|nutrition|sleep|cardiovascular",
+      "action": "<具体的な改善アクション>",
+      "risk_reduction_pct": <1-80の整数>,
+      "timeline_weeks": <1-12の整数>,
+      "timeline_description": "<効果が出るまでの説明 50字以内>",
+      "difficulty": "easy|medium|hard"
+    }
+  ]
+}`;
+
+  const message = await anthropic.messages.create({
+    model: "claude-sonnet-4-6",
+    max_tokens: 2048,
+    messages: [{ role: "user", content: prompt }],
+  });
+
+  const text = message.content[0].type === "text" ? message.content[0].text : "";
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error("AI parse error: no JSON in response");
+
+  const parsed = JSON.parse(jsonMatch[0]) as RecommendationResult;
+  parsed.generated_at = new Date().toISOString();
+  return parsed;
 }
 
 // モックデータ（開発・UI確認用）

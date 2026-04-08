@@ -21,6 +21,7 @@ export interface MealResult {
   total_protein_g: number | null;
   total_fat_g: number | null;
   total_carbs_g: number | null;
+  advice: string;
 }
 
 export interface TrainingResult {
@@ -36,6 +37,7 @@ export interface TrainingResult {
     rpe: number | null;     // Rate of Perceived Exertion (1-10) ある場合
   }[];
   notes: string | null;
+  advice: string;
 }
 
 export interface BodyResult {
@@ -49,6 +51,7 @@ export interface BodyResult {
   bone_mass_kg: number | null;
   visceral_fat_level: number | null;
   metabolic_age: number | null;
+  advice: string;
 }
 
 export interface CardioResult {
@@ -63,6 +66,7 @@ export interface CardioResult {
   avg_heart_rate: number | null;
   max_heart_rate: number | null;
   elevation_m: number | null;
+  advice: string;
 }
 
 export type AnalyzeResult =
@@ -86,10 +90,14 @@ function detectMediaType(buffer: ArrayBuffer): "image/jpeg" | "image/png" | "ima
 }
 
 export async function analyzeScreenshot(imageBuffer: ArrayBuffer): Promise<AnalyzeResult> {
+  if (imageBuffer.byteLength === 0) {
+    throw new Error("Empty image buffer received from LINE");
+  }
   const base64 = Buffer.from(imageBuffer).toString("base64");
   const mediaType = detectMediaType(imageBuffer);
 
-  const prompt = `このフィットネス・健康管理アプリのスクリーンショットを解析してください。
+  const prompt = `フィットネス・健康管理に関する画像を解析してください。
+アプリのスクリーンショットだけでなく、体重計・血圧計などの実機の液晶画面を撮影した写真も対象です。
 
 ## STEP 1: 内容カテゴリを判定
 以下の4つのカテゴリに分類してください：
@@ -100,8 +108,9 @@ export async function analyzeScreenshot(imageBuffer: ArrayBuffer): Promise<Analy
 - **training（筋トレ・ウエイト）**: 種目名・セット・重量・回数が記録されているスクショ
   対応アプリ例: 筋トレメモ、STRONG、Hevy、JEFIT、GymBook、FitNotes、Nike Training Club、BodySpace、Gymaholic、トレーニング日誌 等
 
-- **body（体重・体組成）**: 体重・体脂肪率・筋肉量等の測定値が表示されているスクショ
-  対応アプリ例: タニタHealthPlanet、Withings Health Mate、OMRON connect、Finc、 体重記録アプリ、RenphoアプリiPhone・Apple ヘルスケア（体重グラフ）等
+- **body（体重・体組成）**: 体重・体脂肪率・筋肉量等の測定値が表示されているもの
+  ★体重計・体組成計の液晶ディスプレイを直接撮影した写真も含む
+  対応例: タニタ・OMRON・Withings・Renpho等の体重計実機写真、タニタHealthPlanet・Withings Health Mate・OMRON connect・Apple ヘルスケア等のアプリスクショ
 
 - **cardio（有酸素・アクティビティ）**: 走行距離・時間・ペース・消費カロリーが記録されているスクショ
   対応アプリ例: Strava、Nike Run Club、Garmin Connect、adidas Running(Runtastic)、RUNKEEPER、Apple ワークアウト、Google Fit、YAMAP、SUUNTOアプリ 等
@@ -129,7 +138,8 @@ JSON以外のテキストは絶対に含めないでください。
   "total_calories": 数値またはnull,
   "total_protein_g": 数値またはnull,
   "total_fat_g": 数値またはnull,
-  "total_carbs_g": 数値またはnull
+  "total_carbs_g": 数値またはnull,
+  "advice": "このデータに対する具体的な一言アドバイス（50文字以内、パーソナルトレーナーとして）"
 }
 
 ---
@@ -149,7 +159,8 @@ JSON以外のテキストは絶対に含めないでください。
       "rpe": 数値またはnull
     }
   ],
-  "notes": "メモがあれば文字列、なければnull"
+  "notes": "メモがあれば文字列、なければnull",
+  "advice": "このデータに対する具体的な一言アドバイス（50文字以内、パーソナルトレーナーとして）"
 }
 
 ---
@@ -157,7 +168,7 @@ JSON以外のテキストは絶対に含めないでください。
 【body の場合】
 {
   "app_type": "body",
-  "source_app": "アプリ名（例: タニタHealthPlanet）",
+  "source_app": "アプリ名または機器名（例: タニタHealthPlanet / OMRON体重計 / タニタBC-768 / 不明）",
   "date": "YYYY-MM-DD",
   "weight_kg": 数値またはnull,
   "body_fat_pct": 数値またはnull,
@@ -165,7 +176,8 @@ JSON以外のテキストは絶対に含めないでください。
   "bmi": 数値またはnull,
   "bone_mass_kg": 数値またはnull,
   "visceral_fat_level": 数値またはnull,
-  "metabolic_age": 数値またはnull
+  "metabolic_age": 数値またはnull,
+  "advice": "このデータに対する具体的な一言アドバイス（50文字以内、パーソナルトレーナーとして）"
 }
 
 ---
@@ -182,7 +194,8 @@ JSON以外のテキストは絶対に含めないでください。
   "calories": 数値またはnull,
   "avg_heart_rate": 数値またはnull,
   "max_heart_rate": 数値またはnull,
-  "elevation_m": 数値またはnull
+  "elevation_m": 数値またはnull,
+  "advice": "このデータに対する具体的な一言アドバイス（50文字以内、パーソナルトレーナーとして）"
 }
 
 ---
