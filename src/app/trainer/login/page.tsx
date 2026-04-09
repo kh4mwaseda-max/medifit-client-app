@@ -20,7 +20,7 @@ export default function TrainerLogin() {
     const res = await fetch("/api/trainer/auth", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email: email || undefined, password }),
     });
 
     if (res.ok) {
@@ -73,7 +73,7 @@ export default function TrainerLogin() {
 
             <button
               type="submit"
-              disabled={!email || !password || loading}
+              disabled={!password || loading}
               className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-100 disabled:text-slate-400 text-white font-semibold py-3 rounded-xl transition-colors text-sm shadow-md shadow-blue-100"
             >
               {loading ? "確認中..." : "ログイン"}
