@@ -1,13 +1,15 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Logo from "@/components/Logo";
 
 export default function TrainerLogin() {
-  const [email, setEmail] = useState("");
+  const searchParams = useSearchParams();
+  const [email, setEmail] = useState(searchParams.get("email") ?? "");
   const [password, setPassword] = useState("");
+  const isExisting = searchParams.get("hint") === "existing";
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -44,6 +46,12 @@ export default function TrainerLogin() {
             <p className="mt-1 text-sm text-slate-500">トレーナー管理画面</p>
           </div>
         </div>
+
+        {isExisting && (
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 text-xs text-amber-700">
+            このメールアドレスは既に登録されています。パスワードを入力してログインしてください。
+          </div>
+        )}
 
         <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 space-y-4">
           <form onSubmit={handleSubmit} className="space-y-4">

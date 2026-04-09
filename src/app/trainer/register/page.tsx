@@ -27,6 +27,9 @@ export default function TrainerRegister() {
     const data = await res.json();
     if (res.ok) {
       router.replace("/trainer/setup");
+    } else if (res.status === 409) {
+      // 既存メール → ログインへ誘導
+      router.replace(`/trainer/login?email=${encodeURIComponent(email)}&hint=existing`);
     } else {
       setError(data.error ?? "登録に失敗しました");
     }
