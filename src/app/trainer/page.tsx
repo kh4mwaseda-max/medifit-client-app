@@ -1,20 +1,35 @@
 export const dynamic = "force-dynamic";
 
 import { createServerClient } from "@/lib/supabase";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import Link from "next/link";
 import LogoutButton from "./LogoutButton";
 import { formatDate } from "@/lib/utils";
 import Logo from "@/components/Logo";
 
-const TRAINER_ID = process.env.TRAINER_ID!;
-
 export default async function TrainerDashboard() {
+  const cookieStore = await cookies();
+  const trainerId = cookieStore.get("trainer_id")?.value ?? process.env.TRAINER_ID!;
+  if (!trainerId) redirect("/trainer/login");
+
   const supabase = createServerClient();
-  const { data: clients } = await supabase
-    .from("clients")
-    .select("id, name, goal, start_date")
-    .eq("trainer_id", TRAINER_ID)
-    .order("created_at", { ascending: false });
+
+  const [clientsRes, trainerRes] = await Promise.all([
+    supabase
+      .from("clients")
+      .select("id, name, goal, start_date")
+      .eq("trainer_id", trainerId)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("trainers")
+      .select("name, plan")
+      .eq("id", trainerId)
+      .single(),
+  ]);
+
+  const clients = clientsRes.data;
+  const trainer = trainerRes.data;
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -23,9 +38,22 @@ export default async function TrainerDashboard() {
       <header className="bg-white border-b border-slate-200 px-5 py-3.5 flex items-center justify-between sticky top-0 z-10 shadow-sm">
         <div className="flex items-center gap-2.5">
           <Logo size="sm" />
-          <p className="text-[11px] text-slate-400 leading-none border-l border-slate-200 pl-2.5 ml-0.5">トレーナー管理</p>
+          <div className="border-l border-slate-200 pl-2.5 ml-0.5">
+            <p className="text-[11px] text-slate-400 leading-none">トレーナー管理</p>
+            {trainer && (
+              <p className="text-[10px] text-slate-600 font-semibold leading-none mt-0.5">
+                {trainer.name}
+                <span className={`ml-1.5 text-[8px] px-1.5 py-0.5 rounded-full font-bold ${trainer.plan === "pro" ? "bg-blue-100 text-blue-600" : "bg-slate-100 text-slate-500"}`}>
+                  {trainer.plan === "pro" ? "Pro" : "Free"}
+                </span>
+              </p>
+            )}
+          </div>
         </div>
-        <LogoutButton />
+        <div className="flex items-center gap-2">
+          <Link href="/trainer/settings" className="text-[11px] text-slate-400 hover:text-slate-600 px-2 py-1.5 rounded-lg hover:bg-slate-100 transition-colors">設定</Link>
+          <LogoutButton />
+        </div>
       </header>
 
       <main className="max-w-2xl mx-auto px-4 py-6 space-y-4">
