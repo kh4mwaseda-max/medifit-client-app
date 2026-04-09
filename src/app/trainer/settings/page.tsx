@@ -5,21 +5,27 @@ import { notFound, redirect } from "next/navigation";
 import { createServerClient } from "@/lib/supabase";
 import TrainerSettingsForm from "./TrainerSettingsForm";
 
-export default async function TrainerSettingsPage() {
+export default async function TrainerSettingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ upgraded?: string }>;
+}) {
   const cookieStore = await cookies();
-  const trainerId = cookieStore.get("trainer_id")?.value;
+  const trainerId = cookieStore.get("trainer_id")?.value ?? process.env.TRAINER_ID;
   if (!trainerId) redirect("/trainer/login");
 
   const supabase = createServerClient();
   const { data: trainer } = await supabase
     .from("trainers")
-    .select("id, name, email, plan, line_channel_access_token, line_channel_secret, line_notify_user_id")
+    .select("id, name, email, plan, line_channel_access_token, line_channel_secret, line_notify_user_id, stripe_customer_id, stripe_subscription_id")
     .eq("id", trainerId)
     .single();
 
   if (!trainer) notFound();
 
   const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/line/webhook/${trainerId}`;
+  const params = await searchParams;
+  const justUpgraded = params.upgraded === "1";
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -36,8 +42,10 @@ export default async function TrainerSettingsPage() {
             line_channel_access_token: trainer.line_channel_access_token ? "***set***" : "",
             line_channel_secret: trainer.line_channel_secret ? "***set***" : "",
             line_notify_user_id: trainer.line_notify_user_id ?? "",
+            stripe_customer_id: trainer.stripe_customer_id ?? null,
           }}
           webhookUrl={webhookUrl}
+          justUpgraded={justUpgraded}
         />
       </main>
     </div>

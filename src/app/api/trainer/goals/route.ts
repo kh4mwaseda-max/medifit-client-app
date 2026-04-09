@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
-
-const TRAINER_ID = process.env.TRAINER_ID!;
+import { getTrainerId } from "@/lib/trainer-auth";
 
 // GET /api/trainer/goals?clientId=xxx
 export async function GET(req: NextRequest) {
@@ -25,6 +24,9 @@ export async function GET(req: NextRequest) {
 
 // POST /api/trainer/goals — 作成 or 置き換え
 export async function POST(req: NextRequest) {
+  const trainerId = await getTrainerId() ?? process.env.TRAINER_ID;
+  if (!trainerId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const body = await req.json();
   const { clientId, ...fields } = body;
 
@@ -39,7 +41,7 @@ export async function POST(req: NextRequest) {
     .from("client_goals")
     .insert({
       client_id: clientId,
-      trainer_id: TRAINER_ID,
+      trainer_id: trainerId,
       daily_calories_kcal: fields.daily_calories_kcal ?? null,
       daily_protein_g: fields.daily_protein_g ?? null,
       daily_fat_g: fields.daily_fat_g ?? null,
@@ -51,6 +53,7 @@ export async function POST(req: NextRequest) {
       target_muscle_kg: fields.target_muscle_kg ?? null,
       target_date: fields.target_date ?? null,
       roadmap_text: fields.roadmap_text ?? null,
+      nutrition_advice: fields.nutrition_advice ?? null,
       trainer_notes: fields.trainer_notes ?? null,
     })
     .select()

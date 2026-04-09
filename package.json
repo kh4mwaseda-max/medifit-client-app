@@ -10,13 +10,15 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
+    "@stripe/stripe-js": "^9.1.0",
     "@supabase/supabase-js": "^2.49.4",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "next": "^16.2.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "recharts": "^2.15.3"
+    "recharts": "^2.15.3",
+    "stripe": "^22.0.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -25,6 +27,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "^16.2.2",
+    "pg": "^8.20.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

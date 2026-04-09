@@ -7,6 +7,7 @@ import Logo from "@/components/Logo";
 interface Props {
   trainer: { id: string; name: string; plan: string; line_channel_access_token: string | null };
   webhookUrl: string;
+  isIndividual?: boolean;
 }
 
 const STEPS = [
@@ -18,7 +19,7 @@ const STEPS = [
 
 type StepId = (typeof STEPS)[number]["id"];
 
-export default function SetupGuide({ trainer, webhookUrl }: Props) {
+export default function SetupGuide({ trainer, webhookUrl, isIndividual = false }: Props) {
   const [step, setStep] = useState<StepId>("welcome");
   const [copied, setCopied] = useState(false);
   const [token, setToken] = useState("");
@@ -33,6 +34,7 @@ export default function SetupGuide({ trainer, webhookUrl }: Props) {
   const router = useRouter();
 
   const isPro = trainer.plan === "pro";
+  const isIndividualUser = isIndividual;
   const stepIndex = STEPS.findIndex((s) => s.id === step);
 
   const copyWebhook = () => {
@@ -94,17 +96,19 @@ export default function SetupGuide({ trainer, webhookUrl }: Props) {
                 {trainer.name} さん、<br />ようこそ AllYourFit へ！
               </h1>
               <p className="text-xs text-slate-500">
-                3ステップでセットアップ完了します（約2分）
+                {isIndividualUser ? "2ステップでセットアップ完了します（約1分）" : "3ステップでセットアップ完了します（約2分）"}
               </p>
             </div>
 
             {/* プランバッジ */}
-            <div className={`rounded-xl p-4 text-center ${isPro ? "bg-blue-50 border border-blue-200" : "bg-slate-50 border border-slate-200"}`}>
-              <p className={`text-xs font-bold ${isPro ? "text-blue-600" : "text-slate-500"}`}>
-                {isPro ? "✦ Pro プラン" : "Free プラン"}
+            <div className={`rounded-xl p-4 text-center ${isIndividualUser ? "bg-teal-50 border border-teal-200" : isPro ? "bg-blue-50 border border-blue-200" : "bg-slate-50 border border-slate-200"}`}>
+              <p className={`text-xs font-bold ${isIndividualUser ? "text-teal-600" : isPro ? "text-blue-600" : "text-slate-500"}`}>
+                {isIndividualUser ? "🏋️ 個人プラン" : isPro ? "✦ Pro プラン" : "Free プラン"}
               </p>
               <p className="text-[11px] text-slate-500 mt-1">
-                {isPro
+                {isIndividualUser
+                  ? "自分のデータを記録・分析。AIアドバイザーで目標達成をサポート"
+                  : isPro
                   ? "クライアント最大10名・AI解析無制限・レポート自動生成"
                   : "自分1人のデータ管理・LINEスクショ月50回"}
               </p>

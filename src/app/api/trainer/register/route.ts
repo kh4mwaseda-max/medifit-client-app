@@ -3,7 +3,7 @@ import { createServerClient } from "@/lib/supabase";
 import { hashPassword } from "@/lib/trainer-auth";
 
 export async function POST(req: NextRequest) {
-  const { name, email, password } = await req.json();
+  const { name, email, password, user_type } = await req.json();
   if (!name || !email || !password) {
     return NextResponse.json({ error: "name, email, password required" }, { status: 400 });
   }
@@ -31,6 +31,8 @@ export async function POST(req: NextRequest) {
       email: email.toLowerCase().trim(),
       password_hash: hashPassword(password),
       plan: "free",
+      user_type: user_type === "individual" ? "individual" : "trainer",
+      trial_ends_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
     })
     .select("id, plan")
     .single();

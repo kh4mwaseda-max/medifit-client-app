@@ -43,6 +43,12 @@ export async function POST(req: NextRequest) {
     lines.push(``);
   }
 
+  if (goals.nutrition_advice) {
+    lines.push(`【食事・サプリアドバイス】`);
+    lines.push(goals.nutrition_advice);
+    lines.push(``);
+  }
+
   if (goals.weekly_training_sessions) {
     lines.push(`【トレーニング目標】`);
     lines.push(`🏋 週${goals.weekly_training_sessions}回`);
