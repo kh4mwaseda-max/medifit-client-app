@@ -17,7 +17,7 @@ export default async function TrainerSettingsPage({
   const supabase = createServerClient();
   const { data: trainer } = await supabase
     .from("trainers")
-    .select("id, name, email, plan, line_channel_access_token, line_channel_secret, line_notify_user_id, stripe_customer_id, stripe_subscription_id")
+    .select("id, name, email, plan, line_notify_user_id, stripe_customer_id, stripe_subscription_id")
     .eq("id", trainerId)
     .single();
 
@@ -38,13 +38,13 @@ export default async function TrainerSettingsPage({
       <main className="max-w-2xl mx-auto px-4 py-6">
         <TrainerSettingsForm
           trainer={{
-            ...trainer,
-            line_channel_access_token: trainer.line_channel_access_token ? "***set***" : "",
-            line_channel_secret: trainer.line_channel_secret ? "***set***" : "",
+            id: trainer.id,
+            name: trainer.name ?? "",
+            email: trainer.email ?? "",
+            plan: trainer.plan ?? "free",
             line_notify_user_id: trainer.line_notify_user_id ?? "",
             stripe_customer_id: trainer.stripe_customer_id ?? null,
           }}
-          webhookUrl={webhookUrl}
           justUpgraded={justUpgraded}
         />
       </main>
