@@ -17,6 +17,7 @@ interface Props {
     latest_weight: number | null;
     latest_body_fat: number | null;
   };
+  onSent?: () => void;
 }
 
 const ACTIVITY_PAL: Record<string, number> = {
@@ -276,7 +277,7 @@ function LinePreviewModal({
 }
 
 // ── メインフォーム ──────────────────────────────────────────
-export default function GoalSetForm({ clientId, clientName, lineUserId, existingGoals, intakeData }: Props) {
+export default function GoalSetForm({ clientId, clientName, lineUserId, existingGoals, intakeData, onSent }: Props) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [sending, setSending] = useState(false);
@@ -474,6 +475,7 @@ export default function GoalSetForm({ clientId, clientName, lineUserId, existing
       setSentAt(new Date().toISOString());
       setSuccess("LINEで送信しました！");
       router.refresh();
+      onSent?.();
     }
   };
 

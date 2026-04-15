@@ -1,8 +1,9 @@
 export const dynamic = "force-dynamic";
 
 import { createServerClient } from "@/lib/supabase";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
+import { getTrainerId } from "@/lib/trainer-auth";
 import ReportViewer from "./ReportViewer";
 
 interface PageProps {
@@ -10,6 +11,9 @@ interface PageProps {
 }
 
 export default async function ReportPage({ params }: PageProps) {
+  const trainerId = await getTrainerId();
+  if (!trainerId) redirect("/trainer/login");
+
   const { id } = await params;
   const supabase = createServerClient();
 
@@ -17,6 +21,7 @@ export default async function ReportPage({ params }: PageProps) {
     .from("clients")
     .select("id, name, line_user_id")
     .eq("id", id)
+    .eq("trainer_id", trainerId)
     .single();
 
   if (!client) notFound();

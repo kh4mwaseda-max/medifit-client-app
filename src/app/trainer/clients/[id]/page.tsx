@@ -1,8 +1,9 @@
 export const dynamic = "force-dynamic";
 
 import { createServerClient } from "@/lib/supabase";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
+import { getTrainerId } from "@/lib/trainer-auth";
 import TrainerClientTabs from "./TrainerClientTabs";
 
 interface PageProps {
@@ -10,6 +11,9 @@ interface PageProps {
 }
 
 export default async function TrainerClientPage({ params }: PageProps) {
+  const trainerId = await getTrainerId();
+  if (!trainerId) redirect("/trainer/login");
+
   const { id } = await params;
   const supabase = createServerClient();
 
@@ -17,6 +21,7 @@ export default async function TrainerClientPage({ params }: PageProps) {
     .from("clients")
     .select("*")
     .eq("id", id)
+    .eq("trainer_id", trainerId)
     .single();
 
   if (!client) notFound();
@@ -32,7 +37,7 @@ export default async function TrainerClientPage({ params }: PageProps) {
   const clientUrl = `${origin}/client/${id}`;
   const goals = goalsRes.data ?? null;
 
-  // LINE連携ステータス
+  // LINE連携ステータス（ヘッダー表示用）
   const lineStatus = client.line_user_id
     ? client.onboarding_step === "intake_done"
       ? { label: "初回データ入力済・プラン待ち", color: "text-amber-600 bg-amber-50 border-amber-200" }
@@ -55,38 +60,13 @@ export default async function TrainerClientPage({ params }: PageProps) {
       </header>
 
       <main className="max-w-2xl mx-auto px-4 py-5 space-y-4">
-        {/* レポートリンク */}
-        <Link
-          href={`/trainer/clients/${id}/report`}
-          className="flex items-center justify-between bg-white border border-slate-200 rounded-2xl px-4 py-3 shadow-sm hover:border-blue-200 hover:shadow-md transition-all group"
-        >
-          <div className="flex items-center gap-2">
-            <span className="text-base">📊</span>
-            <span className="text-sm font-medium text-slate-700">週次・月次レポート</span>
-          </div>
-          <span className="text-slate-300 group-hover:text-blue-400 transition-colors">›</span>
-        </Link>
-
-        {/* クライアントURL・PIN */}
-        <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm space-y-2">
-          <p className="text-[10px] text-slate-400 font-medium">クライアント共有URL</p>
-          <p className="text-xs text-blue-600 break-all font-mono">{clientUrl}</p>
-          <div className="flex items-center gap-3">
-            <p className="text-[10px] text-slate-400">PIN: <span className="font-mono font-bold text-slate-600 tracking-widest">{client.pin}</span></p>
-            {client.intake_completed_at && (
-              <p className="text-[10px] text-slate-400">
-                問診完了: {new Date(client.intake_completed_at).toLocaleDateString("ja-JP")}
-              </p>
-            )}
-          </div>
-        </div>
-
         <TrainerClientTabs
           client={client}
           bodyRecords={bodyRes.data ?? []}
           trainingSessions={trainingRes.data ?? []}
           assessments={assessmentRes.data ?? []}
           goals={goals}
+          clientUrl={clientUrl}
         />
       </main>
     </div>
