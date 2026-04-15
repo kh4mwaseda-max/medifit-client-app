@@ -54,7 +54,7 @@ async function handleEvent(event: any) {
   // ── 登録済みクライアントかチェック ──
   const { data: client } = await supabase
     .from("clients")
-    .select("id, name, line_user_id, onboarding_step, height_cm, pin, trainer_id")
+    .select("id, name, line_user_id, onboarding_step, height_cm, pin, trainer_id, pending_image_data")
     .eq("line_user_id", lineUserId)
     .single();
 
