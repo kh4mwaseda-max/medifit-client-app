@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { verifyLineSignature, getMessageContent, replyMessage, pushMessage } from "@/lib/line";
 import { analyzeScreenshot, MealResult, TrainingResult, BodyResult, CardioResult } from "@/lib/image-analyzer";
+import { incrementImageCount, getImageCount, checkAndWarnIfNearLimit } from "@/lib/line-usage";
 
 interface RouteParams { params: Promise<{ trainerId: string }> }
 
@@ -137,6 +138,25 @@ async function handleEvent(event: any, trainerId: string, token: string, supabas
       return;
     }
 
+    // 月間画像送信上限チェック（トレーナー単位）
+    const currentCount = await getImageCount(trainerId);
+    if (currentCount >= 150) {
+      const { data: trainerForBlock } = await supabase
+        .from("trainers")
+        .select("line_notify_user_id, line_channel_access_token")
+        .eq("id", trainerId)
+        .single();
+      await checkAndWarnIfNearLimit(
+        trainerId,
+        currentCount,
+        trainerForBlock?.line_notify_user_id,
+        trainerForBlock?.line_channel_access_token ?? token,
+        client.line_user_id
+      );
+      await replyMessage(replyToken, "今月の画像送信上限（150枚）に達しました📊\n来月またお送りください🙏", token);
+      return;
+    }
+
     let imageBuffer: ArrayBuffer;
     try {
       imageBuffer = await getMessageContent(message.id, token);
@@ -179,6 +199,35 @@ async function handleEvent(event: any, trainerId: string, token: string, supabas
         client_id: client.id, line_message_id: message.id,
         app_type: result.app_type, raw_json: result as any, status: "success",
       });
+
+      // 画像送信カウントをインクリメントし、上限に近づいたらトレーナー・クライアントへ警告
+      try {
+        const newCount = await incrementImageCount(trainerId);
+        const { data: trainerForWarn } = await supabase
+          .from("trainers")
+          .select("line_notify_user_id, line_channel_access_token")
+          .eq("id", trainerId)
+          .single();
+        const usageStatus = await checkAndWarnIfNearLimit(
+          trainerId,
+          newCount,
+          trainerForWarn?.line_notify_user_id,
+          trainerForWarn?.line_channel_access_token ?? token,
+          client.line_user_id
+        );
+        // クライアントへも残り枚数を通知（警告しきい値に達したとき）
+        if (usageStatus === "warn" && client.line_user_id) {
+          const remaining = 150 - newCount;
+          await pushMessage(
+            client.line_user_id,
+            `⚠️ 今月の記録送信が${newCount}枚になりました。上限150枚まであと${remaining}枚です。\n月をまたいだらリセットされます📅`,
+            token
+          ).catch((e) => console.error("[line-usage] push client warn error:", e));
+        }
+      } catch (usageErr: any) {
+        console.error("[line-usage] count increment error:", usageErr?.message);
+      }
+
       await replyMessage(replyToken, buildConfirmMessage(result), token);
     } catch (e: any) {
       await supabase.from("line_parse_logs").insert({
@@ -262,13 +311,15 @@ async function handleOnboardingStep(supabase: any, client: any, text: string, re
         intake_completed_at: new Date().toISOString(),
       }).eq("id", client.id);
 
-      // トレーナーに通知
+      // トレーナーに通知（ソロテストモード: クライアントのLINEに送る）
       const { data: tr } = await supabase.from("trainers").select("line_notify_user_id, line_channel_access_token").eq("id", trainerId).single();
-      if (tr?.line_notify_user_id) {
-        const notifyToken = tr.line_channel_access_token ?? process.env.LINE_CHANNEL_ACCESS_TOKEN!;
+      const isSolo = process.env.SOLO_TEST_MODE === "true";
+      const notifyTarget = isSolo ? lineUserId : tr?.line_notify_user_id;
+      if (notifyTarget) {
+        const notifyToken = tr?.line_channel_access_token ?? process.env.LINE_CHANNEL_ACCESS_TOKEN!;
         const url = `${process.env.NEXT_PUBLIC_APP_URL}/trainer/clients/${client.id}`;
-        await pushMessage(tr.line_notify_user_id,
-          `📋 ${client.name} さんの初回データ入力が完了しました！\n目標プランを設定してください：\n${url}`, notifyToken).catch(() => {});
+        await pushMessage(notifyTarget,
+          `${isSolo ? "【トレーナー通知】" : ""}📋 ${client.name} さんの初回データ入力が完了しました！\n目標プランを設定してください：\n${url}`, notifyToken).catch(() => {});
       }
 
       await replyMessage(replyToken,

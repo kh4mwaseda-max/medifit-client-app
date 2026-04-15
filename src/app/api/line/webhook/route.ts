@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
-import { verifyLineSignature, getMessageContent, replyMessage, pushMessage } from "@/lib/line";
+import { verifyLineSignature, getMessageContent, replyMessage, pushMessage, inviteLinkMessage, loginLinkMessage } from "@/lib/line";
 import { analyzeScreenshot, MealResult, TrainingResult, BodyResult, CardioResult } from "@/lib/image-analyzer";
+import { incrementImageCount, getImageCount, checkAndWarnIfNearLimit } from "@/lib/line-usage";
+import { randomBytes } from "crypto";
 
 export async function POST(req: NextRequest) {
   const rawBody = await req.text();
@@ -34,6 +36,8 @@ const ONBOARDING_QUESTIONS: Record<string, string> = {
     "👤 性別を教えてください\n「男性」「女性」「その他」のいずれかを送ってください",
   pending_health:
     "🏥 健康上の注意点や持病はありますか？\n例: 膝が弱い、高血圧\n\n※ 特になければ「なし」と送ってください",
+  pending_activity:
+    "🏃 普段の活動レベルを教えてください\n\n以下から数字を送ってください：\n1️⃣ 座りがち（デスクワーク中心）\n2️⃣ 軽め（週1〜2回の軽い運動）\n3️⃣ 適度（週3〜5回の運動）\n4️⃣ 活発（週6〜7回 or 肉体労働）",
 };
 
 // ── イベントハンドラ ──────────────────────────────────────────────
@@ -50,9 +54,46 @@ async function handleEvent(event: any) {
   // ── 登録済みクライアントかチェック ──
   const { data: client } = await supabase
     .from("clients")
-    .select("id, name, line_user_id, onboarding_step, height_cm, pin")
+    .select("id, name, line_user_id, onboarding_step, height_cm, pin, trainer_id")
     .eq("line_user_id", lineUserId)
     .single();
+
+  // ── 連携済みトレーナーかチェック ──
+  const { data: trainerRows } = await supabase
+    .from("trainers")
+    .select("id, name")
+    .eq("line_notify_user_id", lineUserId)
+    .limit(1);
+  const connectedTrainer = trainerRows?.[0] ?? null;
+
+  // 連携済みトレーナーが「ログイン」を送った → マジックリンク発行
+  if (connectedTrainer && message.type === "text" && message.text.trim() === "ログイン") {
+    const magicToken = randomBytes(32).toString("hex");
+    const magicExpires = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10分
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://allyourfit.com";
+
+    await supabase
+      .from("trainers")
+      .update({ magic_token: magicToken, magic_token_expires_at: magicExpires })
+      .eq("id", connectedTrainer.id);
+
+    await replyMessage(replyToken, loginLinkMessage(`${appUrl}/api/auth/magic?token=${magicToken}`));
+    return;
+  }
+
+  // 連携済みトレーナーが「招待」を送った → 新クライアント招待リンク自動発行
+  // ── 日付確認待ち ──
+  if (client && client.onboarding_step === "pending_date") {
+    if (message.type === "text") {
+      await handleDateConfirm(supabase, client, message.text.trim(), replyToken);
+      return;
+    }
+    if (message.type === "image") {
+      await replyMessage(replyToken, `📅 先ほどの記録の日付を教えてください\n例: 昨日、4/9、4月9日`);
+      return;
+    }
+    return;
+  }
 
   // ── オンボーディング進行中 ──
   if (client && client.onboarding_step?.startsWith("pending_")) {
@@ -87,30 +128,71 @@ async function handleEvent(event: any) {
     return;
   }
 
-  // ── テキストメッセージ: PIN登録 or 通常グリーティング ──
+  // ── テキストメッセージ: トレーナーLINE連携コード or PIN登録 or 通常グリーティング ──
   if (message.type === "text") {
     const text: string = message.text.trim();
+
+    // トレーナー連携コード（6桁英数字大文字）の検出
+    const isTrainerCode = /^[A-Z0-9]{6}$/.test(text);
+    if (isTrainerCode && !client) {
+      const { data: trainerWithCode } = await supabase
+        .from("trainers")
+        .select("id, name, line_link_code_expires_at")
+        .eq("line_link_code", text)
+        .single();
+
+      if (trainerWithCode) {
+        const isExpired = new Date(trainerWithCode.line_link_code_expires_at) < new Date();
+        if (isExpired) {
+          await replyMessage(replyToken, "連携コードの有効期限が切れています。\nダッシュボードで新しいコードを発行してください。");
+        } else {
+          // LINE連携完了
+          await supabase
+            .from("trainers")
+            .update({
+              line_notify_user_id: lineUserId,
+              line_link_code: null,
+              line_link_code_expires_at: null,
+            })
+            .eq("id", trainerWithCode.id);
+
+          await replyMessage(replyToken,
+            `✅ LINE通知の連携が完了しました！\n\n${trainerWithCode.name} さん、ようこそ AllYourFit へ！\n\n【これからの流れ】\n1️⃣ 管理画面の「＋追加」でクライアントを登録\n2️⃣ 案内文をコピーしてクライアントへ送信\n3️⃣ クライアントがPINを公式LINEに送ると自動連携\n4️⃣ クライアントが基礎データを入力 → ここに通知\n5️⃣ アセスメント生成 → 目標設定 → LINEで送信\n\n📋 管理画面\nhttps://allyourfit.com/trainer`
+          );
+        }
+        return;
+      }
+    }
+
     const isPinLike = /^\d{4,6}$/.test(text);
 
-    if (!isPinLike) {
-      if (client) {
-        await replyMessage(
-          replyToken,
-          `${client.name} さん、こんにちは！\n食事・筋トレ・体重・ランニングなど、フィットネスアプリのスクリーンショットを送ってください📸\n自動でダッシュボードに記録します✅`
-        );
+    // 既に連携済みのユーザーはPIN再登録させない
+    if (client) {
+      // onboarding_stepがnull（異常状態）→ オンボーディング再開
+      if (!client.onboarding_step) {
+        await supabase.from("clients").update({ onboarding_step: "pending_height" }).eq("id", client.id);
+        await replyMessage(replyToken, `${client.name} さん、引き続きよろしくお願いします！\n初回データを入力してください。\n\n${ONBOARDING_QUESTIONS.pending_height}`);
       } else {
         await replyMessage(
           replyToken,
-          "はじめまして！\nトレーナーから共有された4〜6桁のPINコードを送ってください🔑"
+          `${client.name} さん、こんにちは！\n食事・筋トレ・体重・ランニングなど、フィットネスアプリのスクリーンショットを送ってください📸\n自動でダッシュボードに記録します✅`
         );
       }
       return;
     }
 
-    // PINコード受信 → クライアント検索＆紐付け
+    if (!isPinLike) {
+      await replyMessage(
+        replyToken,
+        "はじめまして！\nトレーナーから共有された4〜6桁のPINコードを送ってください🔑"
+      );
+      return;
+    }
+
+    // PINコード受信 → クライアント検索＆紐付け（未連携ユーザーのみ）
     const { data: pinClient } = await supabase
       .from("clients")
-      .select("id, name, line_user_id")
+      .select("id, name, line_user_id, trainer_id, goal")
       .eq("pin", text)
       .single();
 
@@ -130,9 +212,20 @@ async function handleEvent(event: any) {
       .update({ line_user_id: lineUserId, onboarding_step: "pending_height" })
       .eq("id", pinClient.id);
 
+    // トレーナー名を取得
+    const { data: pinTrainer } = await supabase
+      .from("trainers")
+      .select("name")
+      .eq("id", pinClient.trainer_id)
+      .single();
+    const trainerName = pinTrainer?.name ?? "トレーナー";
+
+    // 一言メッセージ（goal フィールド）
+    const goalLine = (pinClient as any).goal ? `\n\n💬 ${trainerName}より: ${(pinClient as any).goal}` : "";
+
     await replyMessage(
       replyToken,
-      `${pinClient.name} さん、LINE連携完了です🎉\n\n初回のデータを入力していただきます（約2分）\nトレーナーが最適なプランを作成します📊\n\n${ONBOARDING_QUESTIONS.pending_height}`
+      `${pinClient.name} さん、LINE連携完了です🎉\n\n${trainerName} トレーナーがあなたを招待しました。\n最適なプランを一緒に作っていきましょう！${goalLine}\n\n━━━━━━━━━━━━\n初回のデータを入力していただきます（約2分）\n\n${ONBOARDING_QUESTIONS.pending_height}`
     );
     return;
   }
@@ -144,6 +237,29 @@ async function handleEvent(event: any) {
         replyToken,
         "まだ連携されていません。トレーナーから共有されたPINコードを送ってください🔑"
       );
+      return;
+    }
+
+    // 月間画像送信上限チェック（トレーナー単位・150枚/月）
+    const currentCount = await getImageCount(client.trainer_id);
+    if (currentCount >= 150) {
+      const { data: trainerForBlock } = await supabase
+        .from("trainers")
+        .select("line_notify_user_id")
+        .eq("id", client.trainer_id)
+        .single();
+      await checkAndWarnIfNearLimit(client.trainer_id, currentCount, trainerForBlock?.line_notify_user_id, undefined, client.line_user_id);
+      await replyMessage(replyToken, `${client.name} さん、今月の記録上限（150枚）に達しました📊\n来月またお送りください🙏`);
+      return;
+    }
+
+    // 重複チェック（同じLINEメッセージIDは処理済みとしてスキップ）
+    const { count: alreadyProcessed } = await supabase
+      .from("line_parse_logs")
+      .select("id", { count: "exact", head: true })
+      .eq("line_message_id", message.id);
+    if ((alreadyProcessed ?? 0) > 0) {
+      await replyMessage(replyToken, "この画像はすでに記録済みです✅");
       return;
     }
 
@@ -189,6 +305,16 @@ async function handleEvent(event: any) {
       return;
     }
 
+    // 日付が読み取れなかった場合は確認を求める
+    if (!result.date) {
+      await supabase.from("clients").update({
+        pending_image_data: result,
+        onboarding_step: "pending_date",
+      }).eq("id", client.id);
+      await replyMessage(replyToken, `📅 記録を読み取りました！\nこのデータは何日のものですか？\n例: 昨日、4/9、4月9日`);
+      return;
+    }
+
     try {
       if (result.app_type === "meal")     await saveMealData(supabase, client.id, result);
       if (result.app_type === "training") await saveTrainingData(supabase, client.id, result);
@@ -205,6 +331,30 @@ async function handleEvent(event: any) {
       });
 
       await replyMessage(replyToken, buildConfirmMessage(result));
+
+      // 画像送信カウントをインクリメントし、上限に近づいたらトレーナー・クライアントへ警告
+      try {
+        const newCount = await incrementImageCount(client.trainer_id);
+        const { data: trainerForWarn } = await supabase
+          .from("trainers")
+          .select("line_notify_user_id")
+          .eq("id", client.trainer_id)
+          .single();
+        const usageStatus = await checkAndWarnIfNearLimit(client.trainer_id, newCount, trainerForWarn?.line_notify_user_id, undefined, client.line_user_id);
+        // クライアントへも残り枚数を通知（警告しきい値に達したとき）
+        if (usageStatus === "warn" && client.line_user_id) {
+          const remaining = 150 - newCount;
+          await pushMessage(
+            client.line_user_id,
+            `⚠️ 今月の記録送信が${newCount}枚になりました。上限150枚まであと${remaining}枚です。\n月をまたいだらリセットされます📅`
+          ).catch((e) => console.error("[line-usage] push client warn error:", e));
+        }
+      } catch (usageErr: any) {
+        console.error("[line-usage] count increment error:", usageErr?.message);
+      }
+
+      // トレーナーへのpush通知
+      await notifyTrainerScreenshot(client.trainer_id, client.id, client.name, result.app_type, supabase, client.line_user_id);
     } catch (e: any) {
       await supabase.from("line_parse_logs").insert({
         client_id: client.id,
@@ -217,6 +367,57 @@ async function handleEvent(event: any) {
       await replyMessage(replyToken, "記録の保存に失敗しました。トレーナーにお知らせください。");
     }
   }
+}
+
+// ── 日付確認処理 ─────────────────────────────────────────────────
+
+async function handleDateConfirm(supabase: any, client: any, text: string, replyToken: string) {
+  const date = parseUserDate(text);
+  if (!date) {
+    await replyMessage(replyToken, `日付が読み取れませんでした😅\n以下の形式で送ってください：\n例: 昨日、一昨日、4/9、4月9日`);
+    return;
+  }
+
+  const pendingData = client.pending_image_data;
+  if (!pendingData) {
+    await supabase.from("clients").update({ onboarding_step: null }).eq("id", client.id);
+    await replyMessage(replyToken, `保存するデータが見つかりませんでした。もう一度スクショを送ってください。`);
+    return;
+  }
+
+  const dataWithDate = { ...pendingData, date };
+
+  try {
+    if (dataWithDate.app_type === "meal")     await saveMealData(supabase, client.id, dataWithDate);
+    if (dataWithDate.app_type === "training") await saveTrainingData(supabase, client.id, dataWithDate);
+    if (dataWithDate.app_type === "body")     await saveBodyData(supabase, client.id, dataWithDate);
+    if (dataWithDate.app_type === "cardio")   await saveCardioData(supabase, client.id, dataWithDate);
+
+    await supabase.from("clients").update({ pending_image_data: null, onboarding_step: null }).eq("id", client.id);
+    await replyMessage(replyToken, `${date} の記録を保存しました✅`);
+  } catch {
+    await replyMessage(replyToken, "保存に失敗しました。もう一度スクショを送ってください。");
+  }
+}
+
+function parseUserDate(text: string): string | null {
+  const today = new Date();
+  const fmt = (d: Date) => d.toISOString().split("T")[0];
+
+  if (/今日|きょう/.test(text)) return fmt(today);
+  if (/昨日|きのう/.test(text)) { today.setDate(today.getDate() - 1); return fmt(today); }
+  if (/一昨日|おととい/.test(text)) { today.setDate(today.getDate() - 2); return fmt(today); }
+
+  // 4/9 or 4月9日
+  const m = text.match(/(\d{1,2})[\/月](\d{1,2})/);
+  if (m) {
+    const month = parseInt(m[1]);
+    const day = parseInt(m[2]);
+    const year = today.getFullYear();
+    const d = new Date(year, month - 1, day);
+    if (!isNaN(d.getTime())) return fmt(d);
+  }
+  return null;
 }
 
 // ── オンボーディング各ステップ処理 ───────────────────────────────
@@ -316,20 +517,92 @@ async function handleOnboardingStep(
 
     case "pending_health": {
       const concerns = /なし|none|特になし|ありません/i.test(text) ? null : text;
-      const now = new Date().toISOString();
       await supabase.from("clients").update({
         health_concerns: concerns,
+        onboarding_step: "pending_activity",
+      }).eq("id", client.id);
+      await replyMessage(replyToken, `${concerns ? `「${concerns}」を記録しました✅` : "わかりました✅"}\n\n${ONBOARDING_QUESTIONS.pending_activity}`);
+      break;
+    }
+
+    case "pending_activity": {
+      const activityMap: Record<string, string> = {
+        "1": "sedentary",
+        "2": "light",
+        "3": "moderate",
+        "4": "active",
+        "座りがち": "sedentary",
+        "軽め": "light",
+        "適度": "moderate",
+        "活発": "active",
+      };
+      const key = text.replace(/[①②③④]/g, (c) => ({ "①": "1", "②": "2", "③": "3", "④": "4" }[c] ?? c));
+      const activityLevel = activityMap[key] ?? activityMap[key.charAt(0)];
+
+      if (!activityLevel) {
+        await replyMessage(replyToken, `1〜4の数字で送ってください。\n\n${ONBOARDING_QUESTIONS.pending_activity}`);
+        return;
+      }
+
+      const activityLabel: Record<string, string> = {
+        sedentary: "座りがち",
+        light: "軽め",
+        moderate: "適度",
+        active: "活発",
+      };
+
+      const now = new Date().toISOString();
+      await supabase.from("clients").update({
+        activity_level: activityLevel,
         onboarding_step: "intake_done",
         intake_completed_at: now,
       }).eq("id", client.id);
 
       // トレーナーにプッシュ通知
-      await notifyTrainerIntakeComplete(client.id, client.name, supabase);
+      await notifyTrainerIntakeComplete(client.id, client.name, client.trainer_id, supabase, lineUserId);
 
-      await replyMessage(
-        replyToken,
-        `ご入力ありがとうございます！🎉\n\n以下のデータを受け取りました：\n📏 身長・体重・体脂肪率\n🎂 年齢・性別\n🏥 健康上の注意点\n\nトレーナーが確認の上、個別の目標プランをお送りします📊\nもうしばらくお待ちください🙏`
-      );
+      // 最新の体重・体脂肪率を取得してサマリーに含める
+      const { data: bodyRecord } = await supabase
+        .from("body_records")
+        .select("weight_kg, body_fat_pct")
+        .eq("client_id", client.id)
+        .order("recorded_at", { ascending: false })
+        .limit(1)
+        .single();
+
+      const { data: latestClient } = await supabase
+        .from("clients")
+        .select("height_cm, birth_year, gender, health_concerns")
+        .eq("id", client.id)
+        .single();
+
+      // トレーナー名を取得
+      const { data: trainerForSummary } = await supabase
+        .from("trainers")
+        .select("name")
+        .eq("id", client.trainer_id)
+        .single();
+      const trainerNameForSummary = trainerForSummary?.name ?? "トレーナー";
+
+      const age = latestClient?.birth_year ? new Date().getFullYear() - latestClient.birth_year : null;
+      const genderLabel = latestClient?.gender === "male" ? "男性" : latestClient?.gender === "female" ? "女性" : "その他";
+
+      const summaryLines = [
+        `ご入力ありがとうございます！🎉`,
+        ``,
+        `📋 入力内容の確認：`,
+        latestClient?.height_cm ? `📏 身長: ${latestClient.height_cm}cm` : null,
+        bodyRecord?.weight_kg ? `⚖️ 体重: ${bodyRecord.weight_kg}kg` : null,
+        bodyRecord?.body_fat_pct ? `📉 体脂肪率: ${bodyRecord.body_fat_pct}%` : null,
+        age ? `🎂 年齢: ${age}歳` : null,
+        latestClient?.gender ? `👤 性別: ${genderLabel}` : null,
+        `🏃 活動レベル: ${activityLabel[activityLevel]}`,
+        latestClient?.health_concerns ? `🏥 健康上の注意: ${latestClient.health_concerns}` : `🏥 健康上の注意: なし`,
+        ``,
+        `${trainerNameForSummary} トレーナーが確認の上、個別の目標プランをお送りします📊\nもうしばらくお待ちください🙏`,
+      ].filter(Boolean).join("\n");
+
+      await replyMessage(replyToken, summaryLines);
       break;
     }
   }
@@ -337,8 +610,18 @@ async function handleOnboardingStep(
 
 // ── トレーナーへの通知 ────────────────────────────────────────────
 
-async function notifyTrainerIntakeComplete(clientId: string, clientName: string, supabase: any) {
-  const trainerLineId = process.env.TRAINER_LINE_USER_ID;
+async function notifyTrainerIntakeComplete(clientId: string, clientName: string, trainerId: string, supabase: any, clientLineUserId?: string) {
+  const { data: trainer } = await supabase
+    .from("trainers")
+    .select("line_notify_user_id")
+    .eq("id", trainerId)
+    .single();
+
+  // ソロテストモード: トレーナー通知もクライアントのLINEに送る
+  const isSolo = process.env.SOLO_TEST_MODE === "true";
+  const trainerLineId: string | null = isSolo
+    ? (clientLineUserId ?? trainer?.line_notify_user_id ?? null)
+    : (trainer?.line_notify_user_id ?? null);
   if (!trainerLineId) return;
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
@@ -346,7 +629,46 @@ async function notifyTrainerIntakeComplete(clientId: string, clientName: string,
 
   await pushMessage(
     trainerLineId,
-    `📋 ${clientName} さんの初回データ入力が完了しました！\n\n目標プランを設定してください：\n${dashUrl}`
+    `${isSolo ? "【トレーナー通知】" : ""}📋 ${clientName}さんの初回データ入力が完了しました！\n\n目標プランを設定してください👇\n${dashUrl}`
+  ).catch(() => {});
+}
+
+async function notifyTrainerScreenshot(
+  trainerId: string,
+  clientId: string,
+  clientName: string,
+  appType: string,
+  supabase: any,
+  clientLineUserId?: string,
+) {
+  if (!trainerId) return;
+
+  const { data: trainer } = await supabase
+    .from("trainers")
+    .select("line_notify_user_id")
+    .eq("id", trainerId)
+    .single();
+
+  // ソロテストモード: トレーナー通知もクライアントのLINEに送る
+  const isSolo = process.env.SOLO_TEST_MODE === "true";
+  const trainerLineId: string | null = isSolo
+    ? (clientLineUserId ?? trainer?.line_notify_user_id ?? null)
+    : (trainer?.line_notify_user_id ?? null);
+  if (!trainerLineId) return;
+
+  const typeLabel: Record<string, string> = {
+    meal: "食事記録",
+    training: "トレーニング",
+    body: "体重・体組成",
+    cardio: "有酸素運動",
+  };
+  const label = typeLabel[appType] ?? "記録";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
+  const dashUrl = `${appUrl}/trainer/clients/${clientId}`;
+
+  await pushMessage(
+    trainerLineId,
+    `${isSolo ? "【トレーナー通知】" : ""}📲 ${clientName} さんが${label}を記録しました\n${dashUrl}`
   ).catch(() => {}); // 通知失敗はサイレント
 }
 
@@ -364,15 +686,21 @@ async function saveMealData(supabase: any, clientId: string, data: MealResult) {
     carbs_g: meal.carbs_g,
   }));
   if (records.length > 0) {
-    const { error } = await supabase.from("meal_records").insert(records);
+    const { error } = await supabase
+      .from("meal_records")
+      .upsert(records, { onConflict: "client_id,meal_date,meal_type,food_name" });
     if (error) throw new Error(error.message);
   }
 }
 
 async function saveTrainingData(supabase: any, clientId: string, data: TrainingResult) {
+  // 同日のセッションを使い回す（なければ作成）
   const { data: session, error: sessionError } = await supabase
     .from("training_sessions")
-    .insert({ client_id: clientId, session_date: data.date, notes: data.notes })
+    .upsert(
+      { client_id: clientId, session_date: data.date, notes: data.notes },
+      { onConflict: "client_id,session_date,notes" }
+    )
     .select()
     .single();
   if (sessionError) throw new Error(sessionError.message);
@@ -387,19 +715,20 @@ async function saveTrainingData(supabase: any, clientId: string, data: TrainingR
     rpe: s.rpe ?? null,
   }));
   if (sets.length > 0) {
-    const { error } = await supabase.from("training_sets").insert(sets);
+    const { error } = await supabase
+      .from("training_sets")
+      .upsert(sets, { onConflict: "session_id,exercise_name,set_number" });
     if (error) throw new Error(error.message);
   }
 }
 
 async function saveBodyData(supabase: any, clientId: string, data: BodyResult) {
-  const { error } = await supabase.from("body_records").insert({
-    client_id: clientId,
-    recorded_at: data.date,
-    weight_kg: data.weight_kg,
-    body_fat_pct: data.body_fat_pct,
-    muscle_mass_kg: data.muscle_mass_kg,
-  });
+  const { error } = await supabase
+    .from("body_records")
+    .upsert(
+      { client_id: clientId, recorded_at: data.date, weight_kg: data.weight_kg, body_fat_pct: data.body_fat_pct, muscle_mass_kg: data.muscle_mass_kg },
+      { onConflict: "client_id,recorded_at" }
+    );
   if (error) throw new Error(error.message);
 }
 
