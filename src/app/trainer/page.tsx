@@ -1,16 +1,16 @@
 export const dynamic = "force-dynamic";
 
 import { createServerClient } from "@/lib/supabase";
-import { cookies } from "next/headers";
+import { getTrainerId } from "@/lib/trainer-auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import LogoutButton from "./LogoutButton";
+import InviteButton from "./InviteButton";
 import { formatDate } from "@/lib/utils";
 import Logo from "@/components/Logo";
 
 export default async function TrainerDashboard() {
-  const cookieStore = await cookies();
-  const trainerId = cookieStore.get("trainer_id")?.value ?? process.env.TRAINER_ID!;
+  const trainerId = await getTrainerId();
   if (!trainerId) redirect("/trainer/login");
 
   const supabase = createServerClient();
@@ -31,13 +31,49 @@ export default async function TrainerDashboard() {
   const allClients = clientsRes.data ?? [];
   const trainer = trainerRes.data;
 
-  // 要対応（問診完了・プラン未送信）を上に
+  // 最終活動日を並列取得（body_records + training_sessions の最新日）
+  const clientIds = allClients.map((c) => c.id);
+  let lastActivityMap: Record<string, string> = {};
+  if (clientIds.length > 0) {
+    const [bodyRes, trainingRes] = await Promise.all([
+      supabase
+        .from("body_records")
+        .select("client_id, recorded_at")
+        .in("client_id", clientIds)
+        .order("recorded_at", { ascending: false }),
+      supabase
+        .from("training_sessions")
+        .select("client_id, session_date")
+        .in("client_id", clientIds)
+        .order("session_date", { ascending: false }),
+    ]);
+    for (const row of bodyRes.data ?? []) {
+      if (!lastActivityMap[row.client_id]) lastActivityMap[row.client_id] = row.recorded_at;
+    }
+    for (const row of trainingRes.data ?? []) {
+      const d = row.session_date;
+      const existing = lastActivityMap[row.client_id];
+      if (!existing || d > existing) lastActivityMap[row.client_id] = d;
+    }
+  }
+
+  // 要対応（問診完了・プラン未送信）を上に、それ以外は最終活動日順
   const urgent = allClients.filter((c) => c.onboarding_step === "intake_done");
-  const others = allClients.filter((c) => c.onboarding_step !== "intake_done");
+  const others = allClients
+    .filter((c) => c.onboarding_step !== "intake_done")
+    .sort((a, b) => {
+      const da = lastActivityMap[a.id] ?? a.start_date ?? "";
+      const db = lastActivityMap[b.id] ?? b.start_date ?? "";
+      return db > da ? 1 : -1;
+    });
 
   const isPro = trainer?.plan === "pro";
-  const clientLimit = isPro ? 10 : 1;
-  const canAddMore = allClients.length < clientLimit;
+  const FREE_CLIENTS = 1; // 1名まで無料
+  const paidClients = Math.max(0, allClients.length - FREE_CLIENTS);
+  const canAddMore = true; // 上限なし（2名目から¥500/名/月）
+
+  // 要対応クライアントしかいない場合は、招待/追加/料金/一覧を一旦隠して目標設定に集中させる
+  const focusOnUrgent = urgent.length > 0 && others.length === 0;
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -90,37 +126,61 @@ export default async function TrainerDashboard() {
         )}
 
         {/* ── クライアント一覧ヘッダー ── */}
+        {!focusOnUrgent && (
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <h2 className="text-slate-700 font-semibold text-sm">クライアント一覧</h2>
             <span className="text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
-              {allClients.length}/{clientLimit}名
+              {allClients.length}名
             </span>
+            {paidClients > 0 && (
+              <span className="text-[10px] text-blue-500 bg-blue-50 px-2 py-0.5 rounded-full">
+                ¥{(paidClients * 500).toLocaleString()}/月
+              </span>
+            )}
           </div>
-          {canAddMore ? (
-            <Link
-              href="/trainer/clients/new"
-              className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-4 py-2 rounded-xl transition-colors shadow-sm shadow-blue-100"
-            >
-              + 追加
-            </Link>
-          ) : (
-            <Link
-              href="/trainer/settings"
-              className="bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold px-4 py-2 rounded-xl transition-colors"
-            >
-              {isPro ? "上限達成" : "↑ Proへ"}
-            </Link>
+          {allClients.length > 0 && (
+            <div className="flex items-center gap-2">
+              <InviteButton />
+              <Link
+                href="/trainer/clients/new"
+                className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-4 py-2 rounded-xl transition-colors shadow-sm shadow-blue-100"
+              >
+                + 追加
+              </Link>
+            </div>
           )}
         </div>
+        )}
 
         {/* ── クライアントなし ── */}
-        {allClients.length === 0 ? (
-          <div className="text-center py-20 space-y-3 bg-white rounded-2xl border border-slate-200">
-            <p className="text-3xl">👤</p>
-            <p className="text-slate-400 text-sm">クライアントがまだいません</p>
-            <Link href="/trainer/clients/new" className="text-blue-500 text-sm underline">
-              最初のクライアントを追加する
+        {focusOnUrgent ? null : allClients.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-5">
+            <div className="text-center space-y-2">
+              <p className="text-3xl">🎉</p>
+              <p className="text-slate-700 font-bold text-sm">LINE連携完了！まずはクライアントを追加しましょう</p>
+              <p className="text-xs text-slate-400">案内文をコピーして送るだけで簡単に始められます</p>
+            </div>
+            <div className="bg-slate-50 rounded-xl p-4 space-y-2.5">
+              <p className="text-xs font-semibold text-slate-500">ここからの流れ</p>
+              {[
+                "「＋追加」でクライアントを登録",
+                "案内文をコピーしてLINEやメールで送信",
+                "クライアントがPINをLINEに送ると自動連携",
+                "クライアントが基礎データを入力すると通知が届く",
+                "アセスメント生成 → 目標設定 → LINEで送信して指導スタート！",
+              ].map((text, i) => (
+                <div key={i} className="flex items-start gap-2.5 text-xs text-slate-600">
+                  <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-600 font-bold text-[10px] flex items-center justify-center flex-none mt-0.5">{i + 1}</span>
+                  <span>{text}</span>
+                </div>
+              ))}
+            </div>
+            <Link
+              href="/trainer/clients/new"
+              className="flex items-center justify-center w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl text-sm transition-colors shadow-sm shadow-blue-100"
+            >
+              + 最初のクライアントを追加する
             </Link>
           </div>
         ) : (
@@ -138,29 +198,36 @@ export default async function TrainerDashboard() {
                     {c.goal && <p className="text-xs text-slate-400 mt-0.5 line-clamp-1">{c.goal}</p>}
                   </div>
                 </div>
-                <div className="text-right shrink-0 ml-4">
-                  <p className="text-[10px] text-slate-400">開始日</p>
-                  <p className="text-xs text-slate-600 font-medium">{formatDate(c.start_date)}</p>
+                <div className="text-right shrink-0 ml-4 space-y-0.5">
+                  {lastActivityMap[c.id] ? (
+                    <>
+                      <p className="text-[10px] text-slate-400">最終更新</p>
+                      <p className="text-xs text-slate-600 font-medium">{formatDate(lastActivityMap[c.id])}</p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-[10px] text-slate-400">開始日</p>
+                      <p className="text-xs text-slate-600 font-medium">{formatDate(c.start_date)}</p>
+                    </>
+                  )}
                 </div>
               </Link>
             ))}
           </div>
         )}
 
-        {/* ── Freeプランアップセル ── */}
-        {!isPro && (
-          <Link
-            href="/trainer/settings"
-            className="block bg-gradient-to-r from-blue-600 to-blue-500 rounded-2xl p-4 shadow-sm hover:shadow-md transition-all"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-bold text-white">Proプランで複数クライアント管理</p>
-                <p className="text-[11px] text-blue-200 mt-0.5">¥2,980/月 · 14日間無料 · いつでも解約可</p>
-              </div>
-              <span className="text-white text-lg">→</span>
-            </div>
-          </Link>
+        {/* ── 料金案内 ── */}
+        {!focusOnUrgent && (
+        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4">
+          <p className="text-xs font-semibold text-slate-600 mb-1.5">料金</p>
+          <div className="flex items-baseline gap-1">
+            <span className="text-sm font-bold text-slate-800">1名まで無料</span>
+            <span className="text-xs text-slate-400">· 2名目から ¥500/名/月</span>
+          </div>
+          {paidClients > 0 && (
+            <p className="text-xs text-blue-600 mt-1">現在 {paidClients}名分 ¥{(paidClients * 500).toLocaleString()}/月が発生します</p>
+          )}
+        </div>
         )}
       </main>
     </div>

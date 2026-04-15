@@ -13,9 +13,22 @@ interface Props {
     birth_year: number | null;
     gender: string | null;
     health_concerns: string | null;
+    activity_level: string | null;
     latest_weight: number | null;
     latest_body_fat: number | null;
   };
+}
+
+const ACTIVITY_PAL: Record<string, number> = {
+  sedentary: 1.4, light: 1.6, moderate: 1.75, active: 1.9,
+};
+const ACTIVITY_LABEL: Record<string, string> = {
+  sedentary: "座りがち", light: "軽め", moderate: "適度", active: "活発",
+};
+
+function calcBMR(weightKg: number, heightCm: number, ageYears: number, gender: string): number {
+  if (gender === "female") return 10 * weightKg + 6.25 * heightCm - 5 * ageYears - 161;
+  return 10 * weightKg + 6.25 * heightCm - 5 * ageYears + 5;
 }
 
 const inputCls =
@@ -267,6 +280,8 @@ export default function GoalSetForm({ clientId, clientName, lineUserId, existing
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [sending, setSending] = useState(false);
+  const [suggesting, setSuggesting] = useState(false);
+  const [suggested, setSuggested] = useState(false);
   const [savedGoalId, setSavedGoalId] = useState<string | null>(existingGoals?.id ?? null);
   const [sentAt, setSentAt] = useState<string | null>(existingGoals?.sent_at ?? null);
   const [error, setError] = useState("");
@@ -292,6 +307,40 @@ export default function GoalSetForm({ clientId, clientName, lineUserId, existing
     trainer_notes:            existingGoals?.trainer_notes ?? "",
   });
 
+  const age = intakeData.birth_year ? new Date().getFullYear() - intakeData.birth_year : null;
+  const pal = ACTIVITY_PAL[intakeData.activity_level ?? "moderate"] ?? 1.75;
+
+  // 初回問診から即時計算するBMR/TDEE
+  const initBmr = (intakeData.latest_weight && intakeData.height_cm && age && intakeData.gender)
+    ? Math.round(calcBMR(intakeData.latest_weight, intakeData.height_cm, age, intakeData.gender))
+    : null;
+  const initTdee = initBmr ? Math.round(initBmr * pal) : null;
+
+  const [bmr, setBmr] = useState<number | null>(initBmr);
+  const [tdee, setTdee] = useState<number | null>(initTdee);
+
+  // 目標筋肉量の自動計算
+  const autoMuscleKg = (weightKg: string, bodyFatPct: string): string => {
+    const w = parseFloat(weightKg);
+    const bf = parseFloat(bodyFatPct);
+    if (!isNaN(w) && !isNaN(bf) && w > 0 && bf >= 0 && bf < 100) {
+      return (w * (1 - bf / 100)).toFixed(1);
+    }
+    return "";
+  };
+
+  // カロリー不足量の計算
+  const targetWeightKg = parseFloat(form.target_weight_kg);
+  const currentWeightKg = intakeData.latest_weight ?? 0;
+  const weightToLoseKg = currentWeightKg - targetWeightKg;
+  const daysRemaining = form.target_date
+    ? Math.max(1, Math.round((new Date(form.target_date).getTime() - Date.now()) / 86400000))
+    : null;
+  const dailyDeficit = (weightToLoseKg > 0.1 && daysRemaining && daysRemaining > 0)
+    ? Math.round((weightToLoseKg * 7200) / daysRemaining)
+    : null;
+  const recommendedCalories = (tdee && dailyDeficit) ? tdee - dailyDeficit : null;
+
   // PFCからカロリー自動計算
   const calcCalories = () => {
     const p = parseFloat(form.daily_protein_g) || 0;
@@ -303,7 +352,39 @@ export default function GoalSetForm({ clientId, clientName, lineUserId, existing
   const pfcCalories = calcCalories();
   const enteredCalories = parseInt(form.daily_calories_kcal) || 0;
   const calorieDiff = enteredCalories - pfcCalories;
-  const age = intakeData.birth_year ? new Date().getFullYear() - intakeData.birth_year : null;
+
+  const handleSuggest = async () => {
+    setSuggesting(true);
+    setError("");
+    const res = await fetch("/api/trainer/goals/suggest", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        clientId,
+        targetWeightKg: form.target_weight_kg ? parseFloat(form.target_weight_kg) : null,
+        targetBodyFatPct: form.target_body_fat_pct ? parseFloat(form.target_body_fat_pct) : null,
+        targetDate: form.target_date || null,
+      }),
+    });
+    const data = await res.json();
+    setSuggesting(false);
+    if (!res.ok) { setError(data.error ?? "AI提案に失敗しました"); return; }
+    const s = data.suggestions;
+    setBmr(data.bmr ?? null);
+    setTdee(data.tdee ?? null);
+    setForm((prev) => ({
+      ...prev,
+      daily_calories_kcal: s.daily_calories_kcal?.toString() ?? prev.daily_calories_kcal,
+      daily_protein_g:     s.daily_protein_g?.toString() ?? prev.daily_protein_g,
+      daily_fat_g:         s.daily_fat_g?.toString() ?? prev.daily_fat_g,
+      daily_carbs_g:       s.daily_carbs_g?.toString() ?? prev.daily_carbs_g,
+      weekly_training_sessions: s.weekly_training_sessions?.toString() ?? prev.weekly_training_sessions,
+      nutrition_advice:    s.nutrition_advice ?? prev.nutrition_advice,
+      roadmap_text:        s.roadmap_text ?? prev.roadmap_text,
+    }));
+    if (s.recommended_exercises?.length) setSelectedExercises(s.recommended_exercises);
+    setSuggested(true);
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -341,6 +422,59 @@ export default function GoalSetForm({ clientId, clientName, lineUserId, existing
       router.refresh();
     }
     setSaving(false);
+  };
+
+  const handleSaveAndSend = async () => {
+    // 保存してからLINE送信
+    setSaving(true);
+    setError("");
+    setSuccess("");
+
+    const res = await fetch("/api/trainer/goals", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        clientId,
+        daily_calories_kcal:      form.daily_calories_kcal ? parseInt(form.daily_calories_kcal) : null,
+        daily_protein_g:          form.daily_protein_g ? parseFloat(form.daily_protein_g) : null,
+        daily_fat_g:              form.daily_fat_g ? parseFloat(form.daily_fat_g) : null,
+        daily_carbs_g:            form.daily_carbs_g ? parseFloat(form.daily_carbs_g) : null,
+        weekly_training_sessions: form.weekly_training_sessions ? parseInt(form.weekly_training_sessions) : null,
+        recommended_exercises:    selectedExercises.length ? selectedExercises : null,
+        target_weight_kg:         form.target_weight_kg ? parseFloat(form.target_weight_kg) : null,
+        target_body_fat_pct:      form.target_body_fat_pct ? parseFloat(form.target_body_fat_pct) : null,
+        target_muscle_kg:         form.target_muscle_kg ? parseFloat(form.target_muscle_kg) : null,
+        target_date:              form.target_date || null,
+        roadmap_text:             form.roadmap_text || null,
+        nutrition_advice:         form.nutrition_advice || null,
+        trainer_notes:            form.trainer_notes || null,
+      }),
+    });
+
+    const data = await res.json();
+    setSaving(false);
+    if (!res.ok) { setError(data.error ?? "保存に失敗しました"); return; }
+
+    const goalId = data.goals.id;
+    setSavedGoalId(goalId);
+
+    // LINE送信
+    setSending(true);
+    const sendRes = await fetch("/api/trainer/goals/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ clientId, goalId }),
+    });
+    const sendData = await sendRes.json();
+    setSending(false);
+
+    if (!sendRes.ok) {
+      setError(sendData.error ?? "LINE送信に失敗しました");
+    } else {
+      setSentAt(new Date().toISOString());
+      setSuccess("LINEで送信しました！");
+      router.refresh();
+    }
   };
 
   const handleSend = async () => {
@@ -433,8 +567,120 @@ export default function GoalSetForm({ clientId, clientName, lineUserId, existing
           </div>
         )}
 
+        {/* ── BMR/TDEE表示 ── */}
+        {(bmr || tdee) && (
+          <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-4 space-y-2">
+            <p className="text-xs font-semibold text-indigo-700">現在の代謝（問診データから算出）</p>
+            <div className="grid grid-cols-2 gap-3">
+              {bmr && (
+                <div>
+                  <p className="text-[10px] text-indigo-400">基礎代謝 (BMR)</p>
+                  <p className="text-lg font-black text-indigo-700">{bmr.toLocaleString()} <span className="text-xs font-normal">kcal</span></p>
+                </div>
+              )}
+              {tdee && (
+                <div>
+                  <p className="text-[10px] text-indigo-400">総消費カロリー (TDEE) · {ACTIVITY_LABEL[intakeData.activity_level ?? "moderate"] ?? "適度"}</p>
+                  <p className="text-lg font-black text-indigo-700">{tdee.toLocaleString()} <span className="text-xs font-normal">kcal</span></p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ── 身体目標 ── */}
+        <Section title="① 身体目標を設定" icon="📈">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelCls}>目標体重 (kg)</label>
+              <input
+                type="number" inputMode="decimal" step="0.1"
+                className={inputCls} placeholder="70.0"
+                value={form.target_weight_kg}
+                onChange={(e) => {
+                  const newVal = e.target.value;
+                  const muscle = autoMuscleKg(newVal, form.target_body_fat_pct);
+                  setForm({ ...form, target_weight_kg: newVal, target_muscle_kg: muscle });
+                }}
+              />
+            </div>
+            <div>
+              <label className={labelCls}>目標体脂肪率 (%)</label>
+              <input
+                type="number" inputMode="decimal" step="0.1"
+                className={inputCls} placeholder="15.0"
+                value={form.target_body_fat_pct}
+                onChange={(e) => {
+                  const newVal = e.target.value;
+                  const muscle = autoMuscleKg(form.target_weight_kg, newVal);
+                  setForm({ ...form, target_body_fat_pct: newVal, target_muscle_kg: muscle });
+                }}
+              />
+            </div>
+            <div>
+              <label className={labelCls}>目標除脂肪体重 (kg) <span className="text-[9px] text-slate-300">自動計算</span></label>
+              <input
+                type="number" inputMode="decimal" step="0.1"
+                className={`${inputCls} bg-slate-50`} placeholder="自動計算"
+                value={form.target_muscle_kg}
+                onChange={(e) => setForm({ ...form, target_muscle_kg: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className={labelCls}>目標達成日</label>
+              <input type="date" className={inputCls} {...f("target_date")} />
+            </div>
+          </div>
+
+          {/* カロリー収支計算 */}
+          {dailyDeficit !== null && tdee && (
+            <div className="bg-orange-50 border border-orange-200 rounded-xl px-4 py-3 space-y-1.5 mt-1">
+              <p className="text-xs font-semibold text-orange-700">目標達成に必要なカロリー収支</p>
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div>
+                  <p className="text-[10px] text-orange-400">1日不足分</p>
+                  <p className="text-sm font-bold text-orange-700">-{dailyDeficit.toLocaleString()} kcal</p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-orange-400">TDEE</p>
+                  <p className="text-sm font-bold text-slate-600">{tdee.toLocaleString()} kcal</p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-orange-400">推奨摂取</p>
+                  <p className="text-sm font-bold text-teal-600">{recommendedCalories?.toLocaleString()} kcal</p>
+                </div>
+              </div>
+              <p className="text-[10px] text-orange-400 text-center">
+                {weightToLoseKg.toFixed(1)}kg × 7,200kcal ÷ {daysRemaining}日
+                {dailyDeficit > 1000 && <span className="text-rose-500 font-semibold ml-2">⚠️ 不足量が大きすぎます。期間を延ばすか目標を調整してください</span>}
+              </p>
+            </div>
+          )}
+        </Section>
+
+        {/* ── AI提案ボタン ── */}
+        <div className="space-y-3">
+          <button
+            type="button"
+            onClick={handleSuggest}
+            disabled={suggesting}
+            className="w-full bg-violet-600 hover:bg-violet-700 disabled:bg-violet-300 text-white font-bold py-3.5 rounded-xl text-sm transition-colors flex items-center justify-center gap-2"
+          >
+            {suggesting ? (
+              <><span className="animate-spin">⏳</span> AIが分析中...（10〜20秒）</>
+            ) : suggested ? (
+              "🔄 AIで再提案する"
+            ) : (
+              "✨ ② AIで栄養・トレーニング目標を自動入力"
+            )}
+          </button>
+          {suggested && (
+            <p className="text-[11px] text-violet-600 text-center">✅ AI提案を反映しました。内容を確認・修正してください</p>
+          )}
+        </div>
+
         {/* ── 栄養目標 ── */}
-        <Section title="栄養目標" icon="🍽">
+        <Section title="③ 栄養目標（AI提案を修正）" icon="🍽">
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className={labelCls}>1日カロリー (kcal)</label>
@@ -481,7 +727,7 @@ export default function GoalSetForm({ clientId, clientName, lineUserId, existing
         </Section>
 
         {/* ── トレーニング目標 ── */}
-        <Section title="トレーニング目標" icon="🏋">
+        <Section title="④ トレーニング目標（AI提案を修正）" icon="🏋">
           <div>
             <label className={labelCls}>週のトレーニング回数</label>
             <input type="number" inputMode="numeric" className={inputCls} placeholder="3" min={1} max={7} {...f("weekly_training_sessions")} />
@@ -495,29 +741,7 @@ export default function GoalSetForm({ clientId, clientName, lineUserId, existing
           </div>
         </Section>
 
-        {/* ── 身体目標 ── */}
-        <Section title="身体目標" icon="📈">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className={labelCls}>目標体重 (kg)</label>
-              <input type="number" inputMode="decimal" step="0.1" className={inputCls} placeholder="70.0" {...f("target_weight_kg")} />
-            </div>
-            <div>
-              <label className={labelCls}>目標体脂肪率 (%)</label>
-              <input type="number" inputMode="decimal" step="0.1" className={inputCls} placeholder="15.0" {...f("target_body_fat_pct")} />
-            </div>
-            <div>
-              <label className={labelCls}>目標筋肉量 (kg)</label>
-              <input type="number" inputMode="decimal" step="0.1" className={inputCls} placeholder="60.0" {...f("target_muscle_kg")} />
-            </div>
-            <div>
-              <label className={labelCls}>目標達成日</label>
-              <input type="date" className={inputCls} {...f("target_date")} />
-            </div>
-          </div>
-        </Section>
-
-        {/* ── LINEメッセージ ── */}
+        {/* ── LINEで送るメッセージ ── */}
         <Section title="LINEで送るメッセージ" icon="📩">
           <textarea
             className={`${inputCls} resize-none`}
@@ -560,24 +784,29 @@ export default function GoalSetForm({ clientId, clientName, lineUserId, existing
       </div>
 
       {/* ── スティッキーアクションボタン ── */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur border-t border-slate-200 px-4 py-3 flex gap-3 z-10">
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={saving}
-          className="flex-1 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:bg-blue-300 text-white font-bold py-3.5 rounded-xl text-sm transition-colors"
-        >
-          {saving ? "保存中..." : "保存"}
-        </button>
-        <button
-          type="button"
-          onClick={handleSend}
-          disabled={sending || !savedGoalId || !lineUserId}
-          className="flex-1 bg-teal-500 hover:bg-teal-600 active:bg-teal-700 disabled:bg-slate-200 disabled:text-slate-400 text-white font-bold py-3.5 rounded-xl text-sm transition-colors"
-          title={!lineUserId ? "LINE未連携" : !savedGoalId ? "先に保存してください" : ""}
-        >
-          {sending ? "送信中..." : sentAt ? "LINEに再送信" : "LINEに送信"}
-        </button>
+      <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur border-t border-slate-200 px-4 py-3 z-10">
+        {lineUserId ? (
+          <button
+            type="button"
+            onClick={handleSaveAndSend}
+            disabled={saving || sending}
+            className="w-full bg-teal-500 hover:bg-teal-600 active:bg-teal-700 disabled:bg-slate-200 disabled:text-slate-400 text-white font-bold py-3.5 rounded-xl text-sm transition-colors"
+          >
+            {saving ? "保存中..." : sending ? "送信中..." : sentAt ? "📩 更新してLINEに再送信" : "📩 保存してLINEで送信"}
+          </button>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saving}
+              className="w-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:bg-blue-300 text-white font-bold py-3.5 rounded-xl text-sm transition-colors"
+            >
+              {saving ? "保存中..." : "保存"}
+            </button>
+            <p className="text-center text-[10px] text-slate-400 mt-2">LINE未連携のため送信できません</p>
+          </>
+        )}
       </div>
     </>
   );
