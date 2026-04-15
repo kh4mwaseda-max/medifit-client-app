@@ -559,7 +559,7 @@ async function handleOnboardingStep(
       }).eq("id", client.id);
 
       // トレーナーにプッシュ通知
-      await notifyTrainerIntakeComplete(client.id, client.name, client.trainer_id, supabase, lineUserId);
+      await notifyTrainerIntakeComplete(client.id, client.name, client.trainer_id, supabase, client.line_user_id);
 
       // 最新の体重・体脂肪率を取得してサマリーに含める
       const { data: bodyRecord } = await supabase
