@@ -3,11 +3,12 @@
  * /api/line/webhook/[trainerId]
  * 各トレーナーが自分のLINE公式アカウントのWebhook URLにこれを設定する
  */
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { verifyLineSignature, getMessageContent, replyMessage, pushMessage } from "@/lib/line";
 import { analyzeScreenshot, MealResult, TrainingResult, BodyResult, CardioResult } from "@/lib/image-analyzer";
 import { incrementImageCount, getImageCount, checkAndWarnIfNearLimit } from "@/lib/line-usage";
+import { randomMachoLine } from "@/lib/macho-quotes";
 
 interface RouteParams { params: Promise<{ trainerId: string }> }
 
@@ -37,7 +38,16 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
   const body = JSON.parse(rawBody);
   const events: any[] = body.events ?? [];
 
-  await Promise.allSettled(events.map((e) => handleEvent(e, trainerId, token, supabase)));
+  // LINE Webhookは10秒以内のレスポンスが必須。
+  // Claude Vision解析は時間がかかるため、即200返却してバックグラウンドで処理する。
+  after(async () => {
+    const results = await Promise.allSettled(events.map((e) => handleEvent(e, trainerId, token, supabase)));
+    results.forEach((r, i) => {
+      if (r.status === "rejected") {
+        console.error(`[webhook ${trainerId}] event#${i} failed:`, r.reason);
+      }
+    });
+  });
 
   return NextResponse.json({ ok: true });
 }
@@ -366,7 +376,7 @@ function fmtPace(s: number) { return `${Math.floor(s / 60)}'${String(s % 60).pad
 function buildConfirmMessage(result: MealResult | TrainingResult | BodyResult | CardioResult): string {
   switch (result.app_type) {
     case "meal": return [`✅ 食事記録を保存しました（${result.date}）`, result.total_calories != null ? `🔥 ${result.total_calories} kcal` : null, result.total_protein_g != null ? `💪 P: ${result.total_protein_g}g` : null, `📊 ${result.meals.length}品目`, result.advice ? `\n💬 ${result.advice}` : null].filter(Boolean).join("\n");
-    case "training": return [`✅ トレーニングを記録しました（${result.date}）`, `💪 ${[...new Set(result.sets.map((s) => s.exercise_name))].join("・")}`, `📊 ${result.sets.length}セット`, result.advice ? `\n💬 ${result.advice}` : null].filter(Boolean).join("\n");
+    case "training": return [`✅ トレーニングを記録しました（${result.date}）`, `💪 ${[...new Set(result.sets.map((s) => s.exercise_name))].join("・")}`, `📊 ${result.sets.length}セット`, result.advice ? `\n💬 ${result.advice}` : null, `\n${randomMachoLine()}`].filter(Boolean).join("\n");
     case "body": return [`✅ 体重・体組成を記録しました（${result.date}）`, result.weight_kg != null ? `⚖️ ${result.weight_kg}kg` : null, result.body_fat_pct != null ? `📉 ${result.body_fat_pct}%` : null, result.advice ? `\n💬 ${result.advice}` : null].filter(Boolean).join("\n");
     case "cardio": return [`✅ ${result.activity_type}を記録しました（${result.date}）`, result.distance_km != null ? `📍 ${result.distance_km}km` : null, result.duration_seconds != null ? `⏱ ${fmtDur(result.duration_seconds)}` : null, result.pace_sec_per_km != null ? `🏃 ${fmtPace(result.pace_sec_per_km)}/km` : null].filter(Boolean).join("\n");
   }

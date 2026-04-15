@@ -3,6 +3,7 @@ import { createServerClient } from "@/lib/supabase";
 import { verifyLineSignature, getMessageContent, replyMessage, pushMessage, inviteLinkMessage, loginLinkMessage } from "@/lib/line";
 import { analyzeScreenshot, MealResult, TrainingResult, BodyResult, CardioResult } from "@/lib/image-analyzer";
 import { incrementImageCount, getImageCount, checkAndWarnIfNearLimit } from "@/lib/line-usage";
+import { randomMachoLine } from "@/lib/macho-quotes";
 import { randomBytes } from "crypto";
 
 export async function POST(req: NextRequest) {
@@ -798,6 +799,7 @@ function buildConfirmMessage(result: MealResult | TrainingResult | BodyResult | 
         `💪 ${exercises.join("・")}`,
         `📊 ${result.sets.length} セット記録`,
         result.advice ? `\n💬 ${result.advice}` : null,
+        `\n${randomMachoLine()}`,
       ].filter(Boolean).join("\n");
     }
     case "body": {
