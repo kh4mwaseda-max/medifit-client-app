@@ -314,7 +314,7 @@ async function handleOnboardingStep(supabase: any, client: any, text: string, re
       // トレーナーに通知（ソロテストモード: クライアントのLINEに送る）
       const { data: tr } = await supabase.from("trainers").select("line_notify_user_id, line_channel_access_token").eq("id", trainerId).single();
       const isSolo = process.env.SOLO_TEST_MODE === "true";
-      const notifyTarget = isSolo ? lineUserId : tr?.line_notify_user_id;
+      const notifyTarget = isSolo ? client.line_user_id : tr?.line_notify_user_id;
       if (notifyTarget) {
         const notifyToken = tr?.line_channel_access_token ?? process.env.LINE_CHANNEL_ACCESS_TOKEN!;
         const url = `${process.env.NEXT_PUBLIC_APP_URL}/trainer/clients/${client.id}`;
