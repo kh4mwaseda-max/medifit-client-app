@@ -82,6 +82,10 @@ export async function POST(req: NextRequest) {
   }
 
   lines.push(`一緒に頑張りましょう💪 — ${trainerName} トレーナー`);
+  lines.push(``);
+  lines.push(`※ 送ってもらった記録は、毎朝 ${trainerName} トレーナーに前日分のまとめとして届きます。`);
+  lines.push(``);
+  lines.push(`👇 このあと「記録のコツ」をお送りします`);
 
   const messageText = lines.join("\n");
 

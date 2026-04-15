@@ -102,6 +102,16 @@ export default async function TrainerDashboard() {
 
       <main className="max-w-2xl mx-auto px-4 py-6 space-y-5">
 
+        {/* ── 朝サマリー案内 ── */}
+        {!focusOnUrgent && others.length > 0 && (
+          <div className="bg-blue-50 border border-blue-200 rounded-2xl px-4 py-3 flex items-start gap-2.5">
+            <span className="text-base">📬</span>
+            <p className="text-[11px] text-blue-700 leading-relaxed">
+              毎朝7時に前日のクライアント記録まとめがLINEに届きます。日中はこの画面から個別に確認できます。
+            </p>
+          </div>
+        )}
+
         {/* ── 要対応バナー ── */}
         {urgent.length > 0 && (
           <div className="space-y-2">

@@ -353,8 +353,7 @@ async function handleEvent(event: any) {
         console.error("[line-usage] count increment error:", usageErr?.message);
       }
 
-      // トレーナーへのpush通知
-      await notifyTrainerScreenshot(client.trainer_id, client.id, client.name, result.app_type, supabase, client.line_user_id);
+      // 個別通知はスパムになるので送らない（毎朝の日次サマリーで集約）
     } catch (e: any) {
       await supabase.from("line_parse_logs").insert({
         client_id: client.id,

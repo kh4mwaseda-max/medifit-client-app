@@ -115,6 +115,16 @@ export async function GET(req: NextRequest) {
       }),
     );
 
+    // 記録あり/なしを分離
+    const withData = clientSummaries.filter((s) => s.hasAnyData);
+    const noData = clientSummaries.filter((s) => !s.hasAnyData);
+
+    // 全員無記録ならスキップ
+    if (withData.length === 0) {
+      results.push({ trainer: trainer.name, status: "skipped_no_data" });
+      continue;
+    }
+
     // メッセージ構築
     const lines: string[] = [
       `☀️ おはようございます、${trainer.name} さん`,
@@ -122,13 +132,9 @@ export async function GET(req: NextRequest) {
       ``,
     ];
 
-    for (const s of clientSummaries) {
+    for (const s of withData) {
       lines.push(`━━━━━━━━━━━━`);
       lines.push(`👤 ${s.name}`);
-      if (!s.hasAnyData) {
-        lines.push(`   記録なし`);
-        continue;
-      }
       if (s.body) {
         const parts: string[] = [];
         if (s.body.weight_kg != null) parts.push(`⚖️ ${s.body.weight_kg}kg`);
@@ -147,6 +153,12 @@ export async function GET(req: NextRequest) {
     }
 
     lines.push(`━━━━━━━━━━━━`);
+
+    if (noData.length > 0) {
+      lines.push(``);
+      lines.push(`📭 記録なし: ${noData.map((s) => s.name).join("・")}`);
+    }
+
     lines.push(``);
     lines.push(`🔗 https://allyourfit.com/trainer`);
 
