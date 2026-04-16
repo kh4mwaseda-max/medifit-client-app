@@ -3,7 +3,7 @@
 import { useState } from "react";
 import {
   LineChart, Line, BarChart, Bar, ComposedChart,
-  XAxis, YAxis, CartesianGrid, Tooltip,
+  XAxis, YAxis, CartesianGrid, Tooltip, ScatterChart, Scatter,
   ResponsiveContainer, ReferenceLine,
 } from "recharts";
 import { format, parseISO, subDays } from "date-fns";
@@ -18,6 +18,8 @@ import { getMockRecommendation, type RecommendationResult, type PHRInput } from 
 import { daysSince } from "@/lib/utils";
 import Logo from "./Logo";
 import DigitalTwin from "./DigitalTwin";
+import { buildWeightCalorieCorrelation, buildSleepRpeCorrelation } from "@/lib/correlation";
+import ShareButton from "./ShareButton";
 
 interface Props {
   client: {
@@ -38,14 +40,12 @@ interface Props {
   goals?: any | null;
 }
 
+// 4タブに統合
 const TABS = [
-  { id: "サマリー",     icon: "◈",  label: "サマリー"     },
-  { id: "身体データ",   icon: "📈", label: "身体データ"   },
-  { id: "トレーニング", icon: "🏋", label: "トレーニング" },
-  { id: "食事",        icon: "🥗",  label: "食事"        },
-  { id: "フォト",      icon: "📷",  label: "フォト"      },
-  { id: "AI分析",      icon: "✦",  label: "AI分析"      },
-  { id: "提案",        icon: "💡",  label: "提案"        },
+  { id: "今日",   icon: "◈",  label: "今日"   },
+  { id: "記録",   icon: "📈", label: "記録"   },
+  { id: "フォト", icon: "📷", label: "フォト" },
+  { id: "AI",     icon: "✦",  label: "AI"     },
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
@@ -53,12 +53,13 @@ type TabId = (typeof TABS)[number]["id"];
 export default function ClientDashboard({
   client, bodyRecords, trainingSessions, mealRecords, bodyPhotos, assessment, goals,
 }: Props) {
-  const [activeTab, setActiveTab] = useState<TabId>("サマリー");
+  const [activeTab, setActiveTab] = useState<TabId>("今日");
   const [recommendation, setRecommendation] = useState<RecommendationResult | null>(getMockRecommendation());
   const [recLoading, setRecLoading] = useState(false);
   const [recError, setRecError] = useState<string | null>(null);
 
   const dayCount = daysSince(client.start_date);
+  const today = new Date().toISOString().split("T")[0];
 
   // 最新・最初の身体記録
   const latestBody = bodyRecords[bodyRecords.length - 1];
@@ -81,6 +82,22 @@ export default function ClientDashboard({
   const totalSets = trainingSessions.reduce((sum, s) => sum + (s.training_sets?.length ?? 0), 0);
   const totalVolume = trainingSessions.reduce((sum, s) =>
     sum + (s.training_sets?.reduce((v: number, t: any) => v + (t.weight_kg ?? 0) * (t.reps ?? 0), 0) ?? 0), 0);
+
+  // 今日のデータ
+  const todayMeals = mealRecords.filter((m: any) => m.meal_date === today);
+  const todayProtein = todayMeals.reduce((sum: number, m: any) => sum + (m.protein_g ?? 0), 0);
+  const proteinGoal = goals?.daily_protein_g ?? 150;
+  const todaySession = trainingSessions.find((s: any) => s.session_date === today);
+  const todayBody = bodyRecords.find((b: any) => b.recorded_at === today) ?? latestBody;
+  const prevBody = bodyRecords[bodyRecords.length - 2];
+
+  // 相関データ
+  const weightCalorieData = buildWeightCalorieCorrelation(
+    bodyRecords,
+    mealRecords,
+    goals?.daily_calories_kcal ?? null,
+  );
+  const sleepRpeData = buildSleepRpeCorrelation(bodyRecords, trainingSessions);
 
   async function handleGenerateRecommendation() {
     setRecLoading(true);
@@ -139,7 +156,7 @@ export default function ClientDashboard({
 
       {/* ══ ヘッダー ══════════════════════════════════════════════ */}
       <header className="bg-white border-b border-slate-200 px-4 py-3 sticky top-0 z-20 shadow-sm print:shadow-none">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
+        <div className="max-w-2xl mx-auto flex items-center justify-between">
           <Logo size="sm" />
           <div className="flex items-center gap-3">
             <div className="text-right">
@@ -161,7 +178,7 @@ export default function ClientDashboard({
 
       {/* ══ クライアントバー ══════════════════════════════════════ */}
       <div className="print:hidden bg-white border-b border-slate-100 px-4 py-2.5">
-        <div className="max-w-7xl mx-auto">
+        <div className="max-w-2xl mx-auto">
           <p className="text-slate-800 font-semibold text-sm">
             {client.name}
             <span className="text-slate-400 font-normal text-xs ml-1.5">さんの健康ダッシュボード</span>
@@ -174,9 +191,9 @@ export default function ClientDashboard({
         </div>
       </div>
 
-      {/* ══ タブナビ ══════════════════════════════════════════════ */}
+      {/* ══ タブナビ（4タブ） ════════════════════════════════════ */}
       <nav className="print:hidden bg-white border-b border-slate-200 px-2 sticky top-[57px] z-10">
-        <div className="max-w-7xl mx-auto flex overflow-x-auto">
+        <div className="max-w-2xl mx-auto flex">
           {TABS.map(({ id, icon, label }) => {
             const active = activeTab === id;
             return (
@@ -184,7 +201,7 @@ export default function ClientDashboard({
                 key={id}
                 type="button"
                 onClick={() => setActiveTab(id)}
-                className={`flex-shrink-0 flex items-center gap-1 px-3.5 py-2.5 text-[11px] font-medium transition-all whitespace-nowrap border-b-2 ${
+                className={`flex-1 flex items-center justify-center gap-1 py-2.5 text-[12px] font-medium transition-all border-b-2 ${
                   active
                     ? "text-blue-600 border-blue-600"
                     : "text-slate-400 border-transparent hover:text-slate-600"
@@ -199,12 +216,80 @@ export default function ClientDashboard({
       </nav>
 
       {/* ══ メインコンテンツ ══════════════════════════════════════ */}
-      <main className="max-w-7xl mx-auto px-4 py-4 space-y-3">
+      <main className="max-w-2xl mx-auto px-4 py-4 space-y-3">
 
-        {/* ── サマリー ── */}
-        <div className={activeTab === "サマリー" ? "block space-y-3" : "hidden print:block print:space-y-3"}>
+        {/* ── 今日タブ ── */}
+        <div className={activeTab === "今日" ? "block space-y-3" : "hidden print:block print:space-y-3"}>
 
-          {/* ① ファーストビュー：開始からの変化ヒーローカード */}
+          {/* ① トレーナーからのメッセージ */}
+          {(goals?.roadmap_text || goals?.trainer_notes) && (
+            <div className="bg-gradient-to-r from-indigo-50 to-blue-50 border border-blue-100 rounded-2xl p-4 shadow-sm">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-base">💬</span>
+                <p className="text-xs font-semibold text-blue-700">トレーナーからのメッセージ</p>
+              </div>
+              {goals?.roadmap_text && (
+                <p className="text-sm text-slate-700 whitespace-pre-line leading-relaxed">{goals.roadmap_text}</p>
+              )}
+              {goals?.trainer_notes && goals.trainer_notes !== goals.roadmap_text && (
+                <p className="text-xs text-slate-500 mt-2 whitespace-pre-line">{goals.trainer_notes}</p>
+              )}
+            </div>
+          )}
+
+          {/* ② 今日の3枚KPIカード（ファーストビュー） */}
+          <div className="grid grid-cols-3 gap-2">
+            {/* 体重カード */}
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-3 text-center">
+              <p className="text-[10px] text-slate-400 mb-1">今日の体重</p>
+              <p className="text-xl font-bold text-slate-800 tabular-nums">
+                {todayBody?.weight_kg ?? "—"}
+              </p>
+              <p className="text-[10px] text-slate-400">kg</p>
+              {prevBody?.weight_kg && todayBody?.weight_kg && (
+                <p className={`text-xs font-medium mt-1 ${
+                  todayBody.weight_kg < prevBody.weight_kg ? "text-teal-500" : "text-rose-400"
+                }`}>
+                  {todayBody.weight_kg > prevBody.weight_kg ? "+" : ""}
+                  {(todayBody.weight_kg - prevBody.weight_kg).toFixed(1)}
+                </p>
+              )}
+            </div>
+
+            {/* タンパク質カード */}
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-3 text-center">
+              <p className="text-[10px] text-slate-400 mb-1">P達成率</p>
+              <p className="text-xl font-bold text-slate-800 tabular-nums">
+                {todayMeals.length > 0 && proteinGoal > 0
+                  ? Math.round((todayProtein / proteinGoal) * 100)
+                  : "—"}
+              </p>
+              <p className="text-[10px] text-slate-400">%</p>
+              {todayMeals.length > 0 && (
+                <div className="mt-1 h-1 bg-slate-100 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-teal-400 rounded-full"
+                    style={{ width: `${Math.min(100, (todayProtein / proteinGoal) * 100)}%` }}
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* トレーニングカード */}
+            <div className={`rounded-2xl border shadow-sm p-3 text-center ${
+              todaySession ? "bg-teal-50 border-teal-100" : "bg-white border-slate-200"
+            }`}>
+              <p className="text-[10px] text-slate-400 mb-1">今日のトレ</p>
+              <p className={`text-xl font-bold ${todaySession ? "text-teal-600" : "text-slate-300"}`}>
+                {todaySession ? "✓" : "—"}
+              </p>
+              <p className={`text-[10px] mt-1 ${todaySession ? "text-teal-500" : "text-slate-400"}`}>
+                {todaySession ? "実施済み" : "未記録"}
+              </p>
+            </div>
+          </div>
+
+          {/* ② 開始からの変化ヒーローカード */}
           <ProgressHeroCard
             firstBody={firstBody}
             latestBody={latestBody}
@@ -213,7 +298,7 @@ export default function ClientDashboard({
             lastSession={trainingSessions[0] ?? null}
           />
 
-          {/* ── Tanita Fit スタイル Body Analysis パネル（フルワイド） ── */}
+          {/* ③ DigitalTwin Body Analysis */}
           <DigitalTwin
             weight_kg={latestBody?.weight_kg ?? null}
             body_fat_pct={latestBody?.body_fat_pct ?? null}
@@ -245,304 +330,432 @@ export default function ClientDashboard({
             }
           />
 
-          {/* ── KPI グリッド ── */}
-          <KPIGrid
-            latestBody={latestBody}
-            weightDiff={weightDiff}
-            fatDiff={fatDiff}
-            trainingSessions={trainingSessions}
-            totalVolume={totalVolume}
-            avgCalories={avgCalories}
-            goals={goals}
-          />
+          {/* ④ 体重 × カロリー収支 相関グラフ（AYF差別化の核） */}
+          {weightCalorieData.length >= 3 && (
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
+              <div className="flex items-center justify-between mb-1">
+                <p className="text-xs font-semibold text-slate-500 flex items-center gap-1">
+                  <span>📊</span> 体重 × カロリー収支
+                </p>
+                <div className="flex items-center gap-2">
+                  <p className="text-[9px] text-slate-400">統合分析</p>
+                  <ShareButton
+                    targetId="chart-weight-calorie"
+                    shareText={`【AYF記録】${client.name}の体重×カロリー収支グラフ`}
+                  />
+                </div>
+              </div>
+              <p className="text-[9px] text-slate-400 mb-3">
+                <span className="inline-flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-blue-500 inline-block" />青線 = 体重(kg)
+                </span>
+                <span className="ml-3 inline-flex items-center gap-1">
+                  <span className="w-2 h-2 rounded bg-blue-100 inline-block" />
+                  青棒 = カロリー収支(kcal)
+                </span>
+              </p>
+              <div id="chart-weight-calorie">
+              <ResponsiveContainer width="100%" height={160}>
+                <ComposedChart data={weightCalorieData}>
+                  <Bar
+                    dataKey="calorie_balance"
+                    fill="#93c5fd"
+                    opacity={0.7}
+                    name="カロリー収支(kcal)"
+                    radius={[3, 3, 0, 0]}
+                    yAxisId="cal"
+                  />
+                  <Line
+                    dataKey="weight_kg"
+                    stroke="#3b82f6"
+                    strokeWidth={2}
+                    dot={false}
+                    name="体重(kg)"
+                    yAxisId="weight"
+                    connectNulls
+                  />
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fontSize: 9, fill: "#94a3b8" }}
+                    axisLine={false}
+                    tickLine={false}
+                    interval="preserveStartEnd"
+                  />
+                  <YAxis
+                    yAxisId="cal"
+                    tick={{ fontSize: 9, fill: "#94a3b8" }}
+                    axisLine={false}
+                    tickLine={false}
+                    width={30}
+                  />
+                  <YAxis
+                    yAxisId="weight"
+                    orientation="right"
+                    tick={{ fontSize: 9, fill: "#3b82f6" }}
+                    axisLine={false}
+                    tickLine={false}
+                    width={30}
+                    domain={["auto", "auto"]}
+                  />
+                  <Tooltip
+                    contentStyle={{ fontSize: 11, borderRadius: 8, border: "1px solid #e2e8f0" }}
+                  />
+                </ComposedChart>
+              </ResponsiveContainer>
+              </div>
+              <p className="text-[10px] text-slate-400 mt-2">
+                💡 カロリーが少ない週に体重が下がる傾向を確認できます
+              </p>
+            </div>
+          )}
 
-          {/* ── 体重グラフ ＋ PFC ── */}
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
-            {bodyRecords.length >= 3 && (
-              <WeightSparkCard records={bodyRecords} goals={goals} />
-            )}
-            {avgCalories != null && (
-              <PFCBarCard mealRecords={recentMeals} goals={goals} />
-            )}
-          </div>
-
-          {/* ② コンディション × ボリューム相関グラフ */}
+          {/* ⑤ コンディション × ボリューム */}
           <ConditionVolumeChart
             bodyRecords={bodyRecords}
             trainingSessions={trainingSessions}
           />
 
-          {/* ── 直近トレーニング ＋ アセスメント ── */}
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+          {/* ⑥ 直近トレ + アセスメントプレビュー */}
+          <div className="space-y-3">
             {trainingSessions[0]?.training_sets?.length > 0 && (
               <LastSessionCard
                 session={trainingSessions[0]}
                 allSessions={trainingSessions}
               />
             )}
-            {assessment && (
-              <AssessmentPreviewCard assessment={assessment} onDetail={() => setActiveTab("AI分析")} />
+            {assessment ? (
+              <AssessmentPreviewCard assessment={assessment} onDetail={() => setActiveTab("AI")} />
+            ) : (
+              <button
+                type="button"
+                onClick={() => setActiveTab("AI")}
+                className="w-full bg-gradient-to-r from-blue-600 to-blue-500 rounded-2xl p-4 text-left shadow-sm hover:shadow-md transition-all"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-[10px] font-bold text-blue-200 uppercase tracking-widest">AI分析</p>
+                    <p className="text-sm font-bold text-white mt-0.5">AIアセスメントを生成する</p>
+                    <p className="text-[11px] text-blue-200 mt-0.5">食事・体重・トレーニングを統合分析して改善提案を表示</p>
+                  </div>
+                  <span className="text-2xl">✦</span>
+                </div>
+              </button>
             )}
           </div>
         </div>
 
-        {/* ── 身体データ ── */}
-        <div className={activeTab === "身体データ" ? "block space-y-3" : "hidden"}>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-            <div className="lg:col-span-2 bg-white rounded-2xl p-4 border border-slate-200 shadow-sm">
+        {/* ── 記録タブ（身体 + トレーニング + 食事） ── */}
+        <div className={activeTab === "記録" ? "block space-y-4" : "hidden"}>
+
+          {/* 身体データ */}
+          <section>
+            <div className="flex items-center justify-between px-1 mb-2">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">身体データ</p>
+              <ShareButton
+                targetId="chart-body"
+                shareText={`【AYF記録】${client.name}の体重推移グラフ`}
+              />
+            </div>
+            <div id="chart-body" className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm">
               <BodyChart records={bodyRecords} />
             </div>
             {latestBody && (
-              <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm">
+              <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm mt-2">
                 <BodyMetricsGrid record={latestBody} goals={goals} inline />
               </div>
             )}
-          </div>
+          </section>
+
+          {/* トレーニング */}
+          <section>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 px-1">トレーニング</p>
+            <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm">
+              <TrainingChart sessions={trainingSessions} />
+            </div>
+          </section>
+
+          {/* 食事 */}
+          <section>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 px-1">食事・栄養</p>
+            <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm">
+              <MealChart records={mealRecords} />
+            </div>
+            {avgCalories != null && (
+              <div className="mt-2">
+                <PFCBarCard mealRecords={recentMeals} goals={goals} />
+              </div>
+            )}
+          </section>
+
+          {/* 睡眠 × 翌日RPE 相関（データがあれば） */}
+          {sleepRpeData.length >= 4 && (
+            <section>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 px-1">相関分析</p>
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
+                <p className="text-xs font-semibold text-slate-500 mb-1">睡眠時間 × 翌日RPE</p>
+                <p className="text-[9px] text-slate-400 mb-3">睡眠不足がトレーニング強度に影響しているか確認</p>
+                <ResponsiveContainer width="100%" height={160}>
+                  <ScatterChart>
+                    <XAxis
+                      dataKey="sleep_hours"
+                      name="睡眠時間"
+                      unit="h"
+                      tick={{ fontSize: 9, fill: "#94a3b8" }}
+                      axisLine={false}
+                      tickLine={false}
+                      label={{ value: "睡眠(h)", position: "insideBottomRight", fontSize: 9, fill: "#94a3b8" }}
+                    />
+                    <YAxis
+                      dataKey="next_rpe"
+                      name="翌日RPE"
+                      tick={{ fontSize: 9, fill: "#94a3b8" }}
+                      axisLine={false}
+                      tickLine={false}
+                      domain={[1, 10]}
+                      label={{ value: "RPE", angle: -90, position: "insideLeft", fontSize: 9, fill: "#94a3b8" }}
+                    />
+                    <Tooltip
+                      contentStyle={{ fontSize: 11, borderRadius: 8, border: "1px solid #e2e8f0" }}
+                      formatter={(v: any, name: string) => [v, name]}
+                    />
+                    <Scatter data={sleepRpeData} fill="#3b82f6" opacity={0.6} />
+                  </ScatterChart>
+                </ResponsiveContainer>
+              </div>
+            </section>
+          )}
         </div>
 
-        {/* ── トレーニング ── */}
-        <div className={activeTab === "トレーニング" ? "block" : "hidden"}>
-          <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm">
-            <TrainingChart sessions={trainingSessions} />
-          </div>
-        </div>
-
-        {/* ── 食事 ── */}
-        <div className={activeTab === "食事" ? "block" : "hidden"}>
-          <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm">
-            <MealChart records={mealRecords} />
-          </div>
-        </div>
-
-        {/* ── フォト ── */}
+        {/* ── フォトタブ ── */}
         <div className={activeTab === "フォト" ? "block" : "hidden"}>
           <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm">
             <PhotoComparison photos={bodyPhotos} />
           </div>
         </div>
 
-        {/* ── AI分析 ── */}
-        <div className={activeTab === "AI分析" ? "block" : "hidden"}>
-          <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm">
-            <AssessmentCard assessment={assessment} />
-          </div>
+        {/* ── AIタブ（分析 + 提案） ── */}
+        <div className={activeTab === "AI" ? "block space-y-3" : "hidden"}>
+
+          {/* AI分析 */}
+          <section>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 px-1">AIアセスメント</p>
+            <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm">
+              <AssessmentCard assessment={assessment} clientId={client.id} />
+            </div>
+          </section>
+
+          {/* AI提案 */}
+          <section>
+            <div className="flex items-center justify-between mb-2 px-1">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">AI提案</p>
+              <div className="flex items-center gap-2">
+                {recommendation && (
+                  <p className="text-[10px] text-slate-400">
+                    {new Date(recommendation.generated_at).toLocaleString("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                  </p>
+                )}
+                <button
+                  type="button"
+                  onClick={handleGenerateRecommendation}
+                  disabled={recLoading}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white text-[11px] font-semibold rounded-xl transition-colors shadow-sm"
+                >
+                  {recLoading
+                    ? <><span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" /><span>分析中...</span></>
+                    : <><span>✦</span><span>再生成</span></>
+                  }
+                </button>
+              </div>
+            </div>
+            {recError && (
+              <div className="bg-rose-50 border border-rose-200 rounded-xl px-4 py-3 text-xs text-rose-600 mb-2">
+                {recError}
+              </div>
+            )}
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+              <RecommendationPanel recommendation={recommendation} isLoading={recLoading} />
+            </div>
+          </section>
         </div>
 
-        {/* ── 提案 ── */}
-        <div className={activeTab === "提案" ? "block space-y-3" : "hidden"}>
-          <div className="flex items-center justify-between px-1">
-            <p className="text-[10px] text-slate-400">
-              {recommendation
-                ? `生成: ${new Date(recommendation.generated_at).toLocaleString("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}`
-                : ""}
-            </p>
-            <button
-              type="button"
-              onClick={handleGenerateRecommendation}
-              disabled={recLoading}
-              className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white text-xs font-semibold rounded-xl transition-colors shadow-sm"
-            >
-              {recLoading
-                ? <><span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" /><span>分析中...</span></>
-                : <><span>✦</span><span>AIで再生成</span></>
-              }
-            </button>
-          </div>
-          {recError && (
-            <div className="bg-rose-50 border border-rose-200 rounded-xl px-4 py-3 text-xs text-rose-600">
-              {recError}
-            </div>
-          )}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <RecommendationPanel recommendation={recommendation} isLoading={recLoading} />
-          </div>
-        </div>
+        {/* ── 紹介バナー ── */}
+        <ReferralBanner clientId={client.id} />
+
       </main>
     </div>
   );
 }
 
-// ══ KPI グリッド ═══════════════════════════════════════════════════
+// ══ 紹介バナー ════════════════════════════════════════════════════════
 
-function KPIGrid({ latestBody, weightDiff, fatDiff, trainingSessions, totalVolume, avgCalories, goals }: any) {
-  const wd = Number(weightDiff);
-  const fd = Number(fatDiff);
+function ReferralBanner({ clientId }: { clientId: string }) {
+  const [copied, setCopied] = useState(false);
+  const url = `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/client/${clientId}`;
 
-  const cards = [
-    {
-      label: "体重", unit: "kg",
-      value: latestBody?.weight_kg ?? null,
-      delta: weightDiff != null ? `${wd > 0 ? "+" : ""}${weightDiff}` : null,
-      deltaGood: wd <= 0,
-      target: goals?.target_weight_kg ?? null,
-      icon: "⚖",
-    },
-    {
-      label: "体脂肪率", unit: "%",
-      value: latestBody?.body_fat_pct ?? null,
-      delta: fatDiff != null ? `${fd > 0 ? "+" : ""}${fatDiff}` : null,
-      deltaGood: fd <= 0,
-      target: goals?.target_body_fat_pct ?? null,
-      icon: "📉",
-    },
-    {
-      label: "筋肉量", unit: "kg",
-      value: latestBody?.muscle_mass_kg ?? null,
-      delta: null,
-      deltaGood: true,
-      target: goals?.target_muscle_kg ?? null,
-      icon: "💪",
-    },
-    {
-      label: "トレーニング", unit: "回 / 週",
-      value: (() => {
-        const last7 = trainingSessions.filter((s: any) =>
-          new Date(s.session_date) >= subDays(new Date(), 7)
-        ).length;
-        return last7 || null;
-      })(),
-      delta: null,
-      deltaGood: true,
-      target: goals?.weekly_training_sessions ?? null,
-      icon: "🏋",
-    },
-    {
-      label: "総ボリューム", unit: "t",
-      value: totalVolume > 0 ? +(totalVolume / 1000).toFixed(1) : null,
-      delta: null,
-      deltaGood: true,
-      target: null,
-      icon: "🔋",
-    },
-    {
-      label: "平均カロリー", unit: "kcal",
-      value: avgCalories,
-      delta: null,
-      deltaGood: true,
-      target: goals?.daily_calories_kcal ?? null,
-      icon: "🍽",
-    },
-    {
-      label: "コンディション", unit: "/ 10",
-      value: latestBody?.condition_score ?? null,
-      delta: null,
-      deltaGood: true,
-      target: null,
-      icon: "❤",
-    },
-    {
-      label: "睡眠", unit: "h",
-      value: latestBody?.sleep_hours ?? null,
-      delta: null,
-      deltaGood: true,
-      target: null,
-      icon: "🌙",
-    },
-  ];
+  const copy = () => {
+    navigator.clipboard.writeText(
+      `AYFで食事・トレーニング・体重を一元管理中！\nスクショをLINEに送るだけで自動記録されます。\n${url}`
+    );
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
-      {cards.map((c) => (
-        <KPICard key={c.label} {...c} />
-      ))}
+    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-2xl p-4 flex items-center justify-between gap-3 print:hidden">
+      <div>
+        <p className="text-xs font-bold text-blue-700">友達に紹介する</p>
+        <p className="text-[10px] text-slate-500 mt-0.5">AYFを使っている友達・仲間を招待しよう</p>
+      </div>
+      <button
+        type="button"
+        onClick={copy}
+        className="flex-none text-[11px] font-bold bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl transition-colors whitespace-nowrap"
+      >
+        {copied ? "✓ コピー済み" : "🔗 リンクをコピー"}
+      </button>
     </div>
   );
 }
 
-function KPICard({ label, unit, value, delta, deltaGood, target, icon }: {
-  label: string; unit: string;
-  value: number | null; delta: string | null; deltaGood: boolean;
-  target: number | null; icon: string;
+// ══ 開始からの変化ヒーローカード ════════════════════════════════════
+
+function ProgressHeroCard({
+  firstBody, latestBody, dayCount, goals, lastSession,
+}: {
+  firstBody: any; latestBody: any; dayCount: number; goals: any; lastSession: any;
 }) {
-  const progress = value != null && target != null
-    ? Math.min(100, Math.max(0, 100 - Math.abs((value - target) / target) * 100))
-    : null;
+  if (!firstBody || !latestBody || firstBody === latestBody) return null;
+
+  const weightDiff = latestBody.weight_kg != null && firstBody.weight_kg != null
+    ? +(latestBody.weight_kg - firstBody.weight_kg).toFixed(1) : null;
+  const fatDiff = latestBody.body_fat_pct != null && firstBody.body_fat_pct != null
+    ? +(latestBody.body_fat_pct - firstBody.body_fat_pct).toFixed(1) : null;
+  const muscleDiff = latestBody.muscle_mass_kg != null && firstBody.muscle_mass_kg != null
+    ? +(latestBody.muscle_mass_kg - firstBody.muscle_mass_kg).toFixed(1) : null;
+
+  if (weightDiff == null && fatDiff == null) return null;
+
+  const remainingKg = goals?.target_weight_kg != null && latestBody.weight_kg != null
+    ? +(latestBody.weight_kg - goals.target_weight_kg).toFixed(1) : null;
 
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl p-3.5 shadow-sm relative overflow-hidden">
-      {/* 背景グロー */}
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-50/30 to-transparent pointer-events-none" />
-
-      <div className="flex items-start justify-between mb-2">
-        <p className="text-[10px] text-slate-400 font-medium leading-tight">{label}</p>
-        <span className="text-base leading-none">{icon}</span>
-      </div>
-
-      <p className="text-2xl font-black text-slate-800 tabular-nums leading-none">
-        {value != null ? value : <span className="text-slate-300 text-lg">—</span>}
-        {value != null && <span className="text-[10px] font-normal text-slate-400 ml-0.5">{unit}</span>}
-      </p>
-
-      <div className="flex items-center gap-2 mt-1.5">
-        {delta != null && (
-          <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${
-            deltaGood ? "bg-teal-50 text-teal-600" : "bg-rose-50 text-rose-500"
-          }`}>
-            {delta}
-          </span>
-        )}
-        {target != null && value != null && (
-          <span className="text-[9px] text-slate-300">
-            目標 {target}{unit.split(" ")[0]}
-          </span>
-        )}
-      </div>
-
-      {/* 目標達成度バー */}
-      {progress != null && (
-        <div className="mt-2 h-0.5 bg-slate-100 rounded-full">
-          <div
-            className="h-full bg-blue-400 rounded-full transition-all"
-            style={{ width: `${progress}%` }}
-          />
+    <div className="bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-700 rounded-2xl p-5 shadow-sm text-white">
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-[10px] text-blue-200 uppercase tracking-widest font-semibold">開始からの変化</p>
+          {weightDiff != null && (
+            <div className="flex items-baseline gap-1 mt-1">
+              <span className="text-6xl font-black tabular-nums leading-none">
+                {weightDiff > 0 ? "+" : ""}{weightDiff}
+              </span>
+              <span className="text-xl text-blue-200 font-semibold">kg</span>
+            </div>
+          )}
+          <p className="text-[11px] text-blue-200 mt-2">
+            {dayCount}日間 · スタート {firstBody.weight_kg}kg → 現在 {latestBody.weight_kg}kg
+          </p>
+          {remainingKg != null && Math.abs(remainingKg) > 0.1 && (
+            <p className="text-[11px] text-amber-200 mt-1">
+              目標まで残り <strong>{Math.abs(remainingKg)}kg</strong>
+            </p>
+          )}
         </div>
-      )}
+        <div className="space-y-3 text-right">
+          {fatDiff != null && (
+            <div>
+              <p className="text-[9px] text-blue-300">体脂肪率</p>
+              <p className={`text-2xl font-black tabular-nums ${fatDiff < 0 ? "text-teal-300" : "text-rose-300"}`}>
+                {fatDiff > 0 ? "+" : ""}{fatDiff}
+                <span className="text-xs font-normal text-blue-200">%</span>
+              </p>
+            </div>
+          )}
+          {muscleDiff != null && (
+            <div>
+              <p className="text-[9px] text-blue-300">筋肉量</p>
+              <p className={`text-2xl font-black tabular-nums ${muscleDiff > 0 ? "text-teal-300" : "text-rose-300"}`}>
+                {muscleDiff > 0 ? "+" : ""}{muscleDiff}
+                <span className="text-xs font-normal text-blue-200">kg</span>
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
 
-// ══ 体重スパークライン ═════════════════════════════════════════════
+// ══ コンディション × ボリューム相関グラフ ════════════════════════════
 
-function WeightSparkCard({ records, goals }: { records: any[]; goals: any }) {
-  const data = records.slice(-30).map((r) => ({
-    date: format(parseISO(r.recorded_at), "M/d"),
-    weight: r.weight_kg,
-  }));
+function ConditionVolumeChart({
+  bodyRecords, trainingSessions,
+}: {
+  bodyRecords: any[]; trainingSessions: any[];
+}) {
+  const volByDate = new Map<string, number>();
+  for (const s of trainingSessions) {
+    const vol = s.training_sets?.reduce(
+      (sum: number, t: any) => sum + (t.weight_kg ?? 0) * (t.reps ?? 0), 0
+    ) ?? 0;
+    const d = s.session_date;
+    volByDate.set(d, (volByDate.get(d) ?? 0) + vol);
+  }
 
-  const min = Math.min(...data.map((d) => d.weight ?? 0));
-  const max = Math.max(...data.map((d) => d.weight ?? 0));
+  const data = bodyRecords
+    .filter((b) => b.condition_score != null)
+    .map((b) => {
+      const date = b.recorded_at.slice(0, 10);
+      return {
+        date: format(parseISO(b.recorded_at), "M/d"),
+        condition: b.condition_score as number,
+        volume: +(((volByDate.get(date) ?? 0) / 1000).toFixed(1)),
+      };
+    })
+    .slice(-20);
+
+  if (data.length < 3) return null;
 
   return (
     <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
-      <div className="flex items-center justify-between mb-3">
-        <p className="text-xs font-semibold text-slate-500">体重推移</p>
-        <div className="flex items-center gap-3 text-[10px] text-slate-400">
-          <span>最小 <strong className="text-teal-600">{min}kg</strong></span>
-          <span>最大 <strong className="text-rose-400">{max}kg</strong></span>
-          {goals?.target_weight_kg && (
-            <span>目標 <strong className="text-blue-500">{goals.target_weight_kg}kg</strong></span>
-          )}
-        </div>
+      <div className="flex items-center justify-between mb-1">
+        <p className="text-xs font-semibold text-slate-500 flex items-center gap-1">
+          <span>📊</span> コンディション × ボリューム
+        </p>
+        <p className="text-[9px] text-slate-400">追い込みすぎチェック</p>
       </div>
-      <ResponsiveContainer width="100%" height={100}>
-        <LineChart data={data}>
+      <p className="text-[9px] text-slate-400 mb-3">
+        <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-violet-500 inline-block" />紫線 = コンディション(0–10)</span>
+        <span className="ml-3 inline-flex items-center gap-1"><span className="w-2 h-2 rounded bg-blue-100 inline-block" />青棒 = トレボリューム(t)</span>
+      </p>
+      <ResponsiveContainer width="100%" height={130}>
+        <ComposedChart data={data}>
           <XAxis dataKey="date" tick={{ fill: "#94a3b8", fontSize: 9 }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
-          <YAxis domain={["auto", "auto"]} hide />
+          <YAxis yAxisId="cond" domain={[0, 10]} tick={{ fill: "#94a3b8", fontSize: 9 }} axisLine={false} tickLine={false} width={16} />
+          <YAxis yAxisId="vol" orientation="right" tick={{ fill: "#94a3b8", fontSize: 9 }} axisLine={false} tickLine={false} width={28} unit="t" />
           <Tooltip
-            contentStyle={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, fontSize: 11 }}
-            formatter={(v: number) => [`${v}kg`, "体重"]}
+            contentStyle={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, fontSize: 10 }}
+            formatter={(v: number, name: string) =>
+              name === "コンディション" ? [`${v}/10`, name] : [`${v}t`, name]
+            }
           />
-          {goals?.target_weight_kg && (
-            <ReferenceLine y={goals.target_weight_kg} stroke="#3b82f6" strokeDasharray="4 2" strokeWidth={1} />
-          )}
-          <Line type="monotone" dataKey="weight" stroke="#2563eb" strokeWidth={2} dot={false} connectNulls />
-        </LineChart>
+          <Bar yAxisId="vol" dataKey="volume" fill="#dbeafe" radius={[2, 2, 0, 0]} name="ボリューム" />
+          <Line
+            yAxisId="cond"
+            type="monotone"
+            dataKey="condition"
+            stroke="#7c3aed"
+            strokeWidth={2}
+            dot={{ fill: "#7c3aed", r: 2 }}
+            name="コンディション"
+            connectNulls
+          />
+        </ComposedChart>
       </ResponsiveContainer>
     </div>
   );
 }
 
-// ══ 直近セッション ═════════════════════════════════════════════════
+// ══ 直近セッション ═══════════════════════════════════════════════════
 
 function LastSessionCard({ session, allSessions }: { session: any; allSessions: any[] }) {
   const grouped: Record<string, any[]> = {};
@@ -552,12 +765,10 @@ function LastSessionCard({ session, allSessions }: { session: any; allSessions: 
     grouped[k].push(s);
   }
 
-  // ⑤ セッション間隔
-  const daysSince = Math.floor(
+  const daysSinceSession = Math.floor(
     (Date.now() - new Date(session.session_date).getTime()) / (1000 * 60 * 60 * 24)
   );
 
-  // ④ PR判定: 直近セッション以外の全セッションから種目別過去ベスト算出
   const prevBest = new Map<string, number>();
   for (const s of allSessions.slice(1)) {
     for (const t of s.training_sets ?? []) {
@@ -577,10 +788,10 @@ function LastSessionCard({ session, allSessions }: { session: any; allSessions: 
           <p className="text-[10px] text-slate-400">
             {format(parseISO(session.session_date), "M月d日(E)", { locale: ja })}
           </p>
-          {daysSince === 0 ? (
+          {daysSinceSession === 0 ? (
             <p className="text-[9px] text-teal-500 font-semibold">今日</p>
           ) : (
-            <p className="text-[9px] text-slate-300">前回から {daysSince}日</p>
+            <p className="text-[9px] text-slate-300">前回から {daysSinceSession}日</p>
           )}
         </div>
       </div>
@@ -592,21 +803,17 @@ function LastSessionCard({ session, allSessions }: { session: any; allSessions: 
           const isFirst = !prevBest.has(exercise);
           return (
             <div key={exercise} className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="text-xs font-medium text-slate-700">{exercise}</span>
                 <span className="text-[10px] text-slate-400">{sets.length}set</span>
                 {isPR && (
-                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200">
-                    🏆 PR
-                  </span>
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200">🏆 PR</span>
                 )}
                 {isFirst && (
-                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-500 border border-blue-200">
-                    NEW
-                  </span>
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-500 border border-blue-200">NEW</span>
                 )}
               </div>
-              <div className="flex gap-3 text-[11px]">
+              <div className="flex gap-3 text-[11px] shrink-0">
                 <span className="text-slate-500">最高 <strong className="text-slate-700">{maxW}kg</strong></span>
                 <span className="text-blue-600 font-semibold">Vol {vol.toLocaleString()}kg</span>
               </div>
@@ -618,7 +825,7 @@ function LastSessionCard({ session, allSessions }: { session: any; allSessions: 
   );
 }
 
-// ══ 食事PFCバーカード ═════════════════════════════════════════════
+// ══ 食事PFCバーカード ════════════════════════════════════════════════
 
 function PFCBarCard({ mealRecords, goals }: { mealRecords: any[]; goals: any }) {
   const dates = [...new Set(mealRecords.map((m: any) => m.meal_date))].slice(0, 7);
@@ -689,25 +896,27 @@ function PFCBarCard({ mealRecords, goals }: { mealRecords: any[]; goals: any }) 
   );
 }
 
-// ══ 最新計測値グリッド（身体データタブ） ══════════════════════════
+// ══ 最新計測値グリッド（記録タブ） ════════════════════════════════════
 
 function BodyMetricsGrid({ record, goals, inline }: { record: any; goals: any; inline?: boolean }) {
   const metrics = [
-    { label: "体重",       value: record.weight_kg,          unit: "kg", target: goals?.target_weight_kg },
-    { label: "体脂肪率",   value: record.body_fat_pct,       unit: "%",  target: goals?.target_body_fat_pct },
-    { label: "筋肉量",     value: record.muscle_mass_kg,     unit: "kg", target: goals?.target_muscle_kg },
-    { label: "収縮期血圧", value: record.systolic_bp,        unit: "mmHg", target: null },
-    { label: "拡張期血圧", value: record.diastolic_bp,       unit: "mmHg", target: null },
-    { label: "安静時心拍", value: record.resting_heart_rate, unit: "bpm", target: null },
-    { label: "睡眠",       value: record.sleep_hours,        unit: "h",  target: null },
-    { label: "コンディション", value: record.condition_score, unit: "/10", target: null },
+    { label: "体重",          value: record.weight_kg,          unit: "kg",   target: goals?.target_weight_kg },
+    { label: "体脂肪率",      value: record.body_fat_pct,       unit: "%",    target: goals?.target_body_fat_pct },
+    { label: "筋肉量",        value: record.muscle_mass_kg,     unit: "kg",   target: goals?.target_muscle_kg },
+    { label: "収縮期血圧",    value: record.systolic_bp,        unit: "mmHg", target: null },
+    { label: "拡張期血圧",    value: record.diastolic_bp,       unit: "mmHg", target: null },
+    { label: "安静時心拍",    value: record.resting_heart_rate, unit: "bpm",  target: null },
+    { label: "睡眠",          value: record.sleep_hours,        unit: "h",    target: null },
+    { label: "コンディション", value: record.condition_score,   unit: "/10",  target: null },
   ].filter((m) => m.value != null);
 
   if (metrics.length === 0) return null;
 
   const inner = (
     <>
-      <p className="text-xs font-semibold text-slate-500 mb-3">最新計測値 · {format(parseISO(record.recorded_at), "M月d日", { locale: ja })}</p>
+      <p className="text-xs font-semibold text-slate-500 mb-3">
+        最新計測値 · {format(parseISO(record.recorded_at), "M月d日", { locale: ja })}
+      </p>
       <div className="grid grid-cols-2 gap-2">
         {metrics.map(({ label, value, unit, target }) => (
           <div key={label} className="bg-slate-50 rounded-xl p-2.5 border border-slate-100">
@@ -733,148 +942,7 @@ function BodyMetricsGrid({ record, goals, inline }: { record: any; goals: any; i
   );
 }
 
-// ══ ① ファーストビュー差分ヒーローカード ══════════════════════════
-
-function ProgressHeroCard({
-  firstBody, latestBody, dayCount, goals, lastSession,
-}: {
-  firstBody: any; latestBody: any; dayCount: number; goals: any; lastSession: any;
-}) {
-  if (!firstBody || !latestBody || firstBody === latestBody) return null;
-
-  const weightDiff = latestBody.weight_kg != null && firstBody.weight_kg != null
-    ? +(latestBody.weight_kg - firstBody.weight_kg).toFixed(1) : null;
-  const fatDiff = latestBody.body_fat_pct != null && firstBody.body_fat_pct != null
-    ? +(latestBody.body_fat_pct - firstBody.body_fat_pct).toFixed(1) : null;
-  const muscleDiff = latestBody.muscle_mass_kg != null && firstBody.muscle_mass_kg != null
-    ? +(latestBody.muscle_mass_kg - firstBody.muscle_mass_kg).toFixed(1) : null;
-
-  if (weightDiff == null && fatDiff == null) return null;
-
-  const remainingKg = goals?.target_weight_kg != null && latestBody.weight_kg != null
-    ? +(latestBody.weight_kg - goals.target_weight_kg).toFixed(1) : null;
-
-  return (
-    <div className="bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-700 rounded-2xl p-5 shadow-sm text-white">
-      <div className="flex items-start justify-between">
-        {/* 左: 体重差分（メイン） */}
-        <div>
-          <p className="text-[10px] text-blue-200 uppercase tracking-widest font-semibold">開始からの変化</p>
-          {weightDiff != null && (
-            <div className="flex items-baseline gap-1 mt-1">
-              <span className="text-6xl font-black tabular-nums leading-none">
-                {weightDiff > 0 ? "+" : ""}{weightDiff}
-              </span>
-              <span className="text-xl text-blue-200 font-semibold">kg</span>
-            </div>
-          )}
-          <p className="text-[11px] text-blue-200 mt-2">
-            {dayCount}日間 · スタート {firstBody.weight_kg}kg → 現在 {latestBody.weight_kg}kg
-          </p>
-          {remainingKg != null && Math.abs(remainingKg) > 0.1 && (
-            <p className="text-[11px] text-amber-200 mt-1">
-              目標まで残り <strong>{Math.abs(remainingKg)}kg</strong>
-            </p>
-          )}
-        </div>
-
-        {/* 右: 体脂肪・筋肉 */}
-        <div className="space-y-3 text-right">
-          {fatDiff != null && (
-            <div>
-              <p className="text-[9px] text-blue-300">体脂肪率</p>
-              <p className={`text-2xl font-black tabular-nums ${fatDiff < 0 ? "text-teal-300" : "text-rose-300"}`}>
-                {fatDiff > 0 ? "+" : ""}{fatDiff}
-                <span className="text-xs font-normal text-blue-200">%</span>
-              </p>
-            </div>
-          )}
-          {muscleDiff != null && (
-            <div>
-              <p className="text-[9px] text-blue-300">筋肉量</p>
-              <p className={`text-2xl font-black tabular-nums ${muscleDiff > 0 ? "text-teal-300" : "text-rose-300"}`}>
-                {muscleDiff > 0 ? "+" : ""}{muscleDiff}
-                <span className="text-xs font-normal text-blue-200">kg</span>
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ══ ② コンディション × ボリューム相関グラフ ══════════════════════
-
-function ConditionVolumeChart({
-  bodyRecords, trainingSessions,
-}: {
-  bodyRecords: any[]; trainingSessions: any[];
-}) {
-  const volByDate = new Map<string, number>();
-  for (const s of trainingSessions) {
-    const vol = s.training_sets?.reduce(
-      (sum: number, t: any) => sum + (t.weight_kg ?? 0) * (t.reps ?? 0), 0
-    ) ?? 0;
-    const d = s.session_date;
-    volByDate.set(d, (volByDate.get(d) ?? 0) + vol);
-  }
-
-  const data = bodyRecords
-    .filter((b) => b.condition_score != null)
-    .map((b) => {
-      const date = b.recorded_at.slice(0, 10);
-      return {
-        date: format(parseISO(b.recorded_at), "M/d"),
-        condition: b.condition_score as number,
-        volume: +(((volByDate.get(date) ?? 0) / 1000).toFixed(1)),
-      };
-    })
-    .slice(-20);
-
-  if (data.length < 3) return null;
-
-  return (
-    <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
-      <div className="flex items-center justify-between mb-1">
-        <p className="text-xs font-semibold text-slate-500 flex items-center gap-1">
-          <span>📊</span> コンディション × ボリューム
-        </p>
-        <p className="text-[9px] text-slate-400">追い込みすぎチェック</p>
-      </div>
-      <p className="text-[9px] text-slate-400 mb-3">
-        <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-violet-500 inline-block" />紫線 = コンディション(0–10)</span>
-        <span className="ml-3 inline-flex items-center gap-1"><span className="w-2 h-2 rounded bg-blue-100 inline-block" />青棒 = トレボリューム(t)</span>
-      </p>
-      <ResponsiveContainer width="100%" height={130}>
-        <ComposedChart data={data}>
-          <XAxis dataKey="date" tick={{ fill: "#94a3b8", fontSize: 9 }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
-          <YAxis yAxisId="cond" domain={[0, 10]} tick={{ fill: "#94a3b8", fontSize: 9 }} axisLine={false} tickLine={false} width={16} />
-          <YAxis yAxisId="vol" orientation="right" tick={{ fill: "#94a3b8", fontSize: 9 }} axisLine={false} tickLine={false} width={28} unit="t" />
-          <Tooltip
-            contentStyle={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, fontSize: 10 }}
-            formatter={(v: number, name: string) =>
-              name === "コンディション" ? [`${v}/10`, name] : [`${v}t`, name]
-            }
-          />
-          <Bar yAxisId="vol" dataKey="volume" fill="#dbeafe" radius={[2, 2, 0, 0]} name="ボリューム" />
-          <Line
-            yAxisId="cond"
-            type="monotone"
-            dataKey="condition"
-            stroke="#7c3aed"
-            strokeWidth={2}
-            dot={{ fill: "#7c3aed", r: 2 }}
-            name="コンディション"
-            connectNulls
-          />
-        </ComposedChart>
-      </ResponsiveContainer>
-    </div>
-  );
-}
-
-// ══ アセスメントプレビュー ═════════════════════════════════════════
+// ══ アセスメントプレビュー ════════════════════════════════════════════
 
 function AssessmentPreviewCard({ assessment, onDetail }: { assessment: any; onDetail: () => void }) {
   const risks = [

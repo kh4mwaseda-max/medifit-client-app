@@ -158,5 +158,5 @@ if (goalErr) console.error("client_goals error:", goalErr.message);
 else console.log("✅ client goals inserted");
 
 console.log("\n🎉 デモデータ投入完了！");
-console.log(`クライアントURL: https://medifit-client-app.vercel.app/client/${CLIENT_ID}`);
+console.log(`クライアントURL: https://allyourfit.com/client/${CLIENT_ID}`);
 console.log(`PIN: 1234`);

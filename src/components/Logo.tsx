@@ -4,6 +4,7 @@
 interface Props {
   size?: "sm" | "md" | "lg" | "xl";
   variant?: "full" | "mark";  // full=マーク+テキスト, mark=マークのみ
+  theme?: "light" | "dark";  // light=ダーク文字（白背景向け）, dark=白文字（ダーク背景向け）
 }
 
 const SIZE = {
@@ -13,18 +14,20 @@ const SIZE = {
   xl: { mark: 64, text: "text-2xl", gap: "gap-4"   },
 };
 
-export default function Logo({ size = "md", variant = "full" }: Props) {
+export default function Logo({ size = "md", variant = "full", theme = "light" }: Props) {
   const s = SIZE[size];
+  const textColor = theme === "dark" ? "text-white" : "text-slate-800";
+  const subColor = theme === "dark" ? "text-slate-400" : "text-slate-400";
   return (
     <div className={`flex items-center ${s.gap}`}>
       <LogoMark size={s.mark} />
       {variant === "full" && (
         <div className="flex flex-col leading-none">
-          <span className={`font-black tracking-tight text-slate-800 ${s.text}`}>
+          <span className={`font-black tracking-tight ${textColor} ${s.text}`}>
             AllYourFit
           </span>
           {size === "lg" || size === "xl" ? (
-            <span className="text-[10px] tracking-widest text-slate-400 font-medium mt-0.5 uppercase">
+            <span className={`text-[10px] tracking-widest ${subColor} font-medium mt-0.5 uppercase`}>
               Personal Health Intelligence
             </span>
           ) : null}

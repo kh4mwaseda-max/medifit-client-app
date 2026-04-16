@@ -12,61 +12,87 @@ interface Props {
 
 const LINE_FRIEND_URL = process.env.NEXT_PUBLIC_LINE_FRIEND_URL ?? "https://lin.ee/YOUR_LINE_ID";
 
+type Step = "welcome" | "line" | "done";
+
 export default function SetupGuide({ trainer, isIndividual = false }: Props) {
-  const [step, setStep] = useState<"welcome" | "client" | "done">("welcome");
-  const [clientName, setClientName] = useState("");
-  const [clientPin, setClientPin] = useState("");
-  const [clientGoal, setClientGoal] = useState("");
-  const [adding, setAdding] = useState(false);
-  const [createdClientId, setCreatedClientId] = useState<string | null>(null);
-  const [copied, setCopied] = useState<"url" | "pin" | "msg" | null>(null);
+  const [step, setStep] = useState<Step>("welcome");
+  const [lineCode, setLineCode] = useState<string | null>(null);
+  const [lineCodeExpiry, setLineCodeExpiry] = useState<Date | null>(null);
+  const [lineCodeGenerating, setLineCodeGenerating] = useState(false);
+  const [lineCodeError, setLineCodeError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [sentConfirmed, setSentConfirmed] = useState(false);
   const router = useRouter();
 
-  const isPro = trainer.plan === "pro";
-  const stepIndex = { welcome: 0, client: 1, done: 2 }[step];
-  const totalSteps = 2;
-
-  const addClient = async () => {
-    if (!clientName || clientPin.length < 4) return;
-    setAdding(true);
-    const res = await fetch("/api/trainer/clients", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: clientName, pin: clientPin, goal: clientGoal }),
-    });
-    const data = await res.json();
-    if (res.ok) {
-      setCreatedClientId(data.client.id);
-      setStep("done");
+  const generateLineCode = async () => {
+    setLineCodeGenerating(true);
+    setLineCodeError(null);
+    try {
+      const res = await fetch("/api/trainer/line-link-code", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "コードの発行に失敗しました");
+      setLineCode(data.code);
+      setLineCodeExpiry(new Date(data.expiresAt));
+    } catch (e: any) {
+      setLineCodeError(e.message);
+    } finally {
+      setLineCodeGenerating(false);
     }
-    setAdding(false);
   };
 
-  const appUrl = typeof window !== "undefined"
-    ? window.location.origin
-    : process.env.NEXT_PUBLIC_APP_URL ?? "";
-
-  const clientUrl = createdClientId ? `${appUrl}/client/${createdClientId}` : "";
-
-  const shareMessage = `【AllYourFit】\nトレーナーからダッシュボードのご案内です📊\n\n① 下のURLにアクセス\n${clientUrl}\n\n② PIN番号を入力: ${clientPin}\n\n③ AllYourFit LINE公式を友達追加してPINを送ると問診がスタートします\n${LINE_FRIEND_URL}`;
-
-  const copy = (type: "url" | "pin" | "msg", text: string) => {
-    navigator.clipboard.writeText(text);
-    setCopied(type);
-    setTimeout(() => setCopied(null), 2000);
+  const copy = () => {
+    if (!lineCode) return;
+    navigator.clipboard.writeText(lineCode);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
+
+  // 個人プランはLINEステップなしでそのままダッシュボードへ
+  if (isIndividual) {
+    return (
+      <div className="space-y-5">
+        <Logo size="sm" variant="full" />
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm text-center space-y-4">
+          <p className="text-3xl">🎉</p>
+          <h1 className="text-lg font-black text-slate-800">{trainer.name} さん、<br />ようこそ！</h1>
+          <p className="text-sm text-slate-500">
+            あすけん・STRONG・タニタ等のスクショをAYF公式LINEに送るだけで自動記録されます。
+          </p>
+          <a
+            href={LINE_FRIEND_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center justify-center gap-2 w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3.5 rounded-2xl text-sm transition-colors"
+          >
+            <span>LINE公式を友達追加する →</span>
+          </a>
+          <button
+            type="button"
+            onClick={() => router.replace("/trainer")}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-2xl text-sm transition-colors"
+          >
+            ダッシュボードへ →
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6">
-
+    <div className="space-y-5">
       {/* ヘッダー */}
       <div className="flex items-center justify-between">
         <Logo size="sm" variant="full" />
         <div className="flex gap-1.5">
-          {Array.from({ length: totalSteps }).map((_, i) => (
+          {(["welcome", "line", "done"] as Step[]).map((s, i) => (
             <div
-              key={i}
-              className={`h-1.5 w-8 rounded-full transition-all ${i < stepIndex ? "bg-blue-600" : i === stepIndex - 1 ? "bg-blue-400" : "bg-slate-200"}`}
+              key={s}
+              className={`h-1.5 w-8 rounded-full transition-all ${
+                step === "done" ? "bg-blue-600" :
+                step === "line" && i <= 1 ? "bg-blue-600" :
+                step === "welcome" && i === 0 ? "bg-blue-400" :
+                "bg-slate-200"
+              }`}
             />
           ))}
         </div>
@@ -74,138 +100,139 @@ export default function SetupGuide({ trainer, isIndividual = false }: Props) {
 
       {/* ── STEP 1: ウェルカム ── */}
       {step === "welcome" && (
-        <div className="space-y-5">
+        <div className="space-y-4">
           <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-5">
             <div className="text-center space-y-2">
-              <p className="text-3xl">🎉</p>
-              <h1 className="text-lg font-black text-slate-800">
-                {trainer.name} さん、<br />ようこそ！
-              </h1>
-              <p className="text-sm text-slate-500">
-                {isIndividual ? "1分でセットアップ完了します" : "クライアントを追加するだけで始められます"}
-              </p>
+              <p className="text-3xl">👋</p>
+              <h1 className="text-lg font-black text-slate-800">{trainer.name} さん、<br />ようこそ！</h1>
+              <p className="text-sm text-slate-500">2ステップでセットアップ完了します</p>
             </div>
 
-            {/* プランバッジ */}
-            <div className={`rounded-2xl p-4 text-center ${isIndividual ? "bg-teal-50 border border-teal-100" : isPro ? "bg-blue-50 border border-blue-100" : "bg-slate-50 border border-slate-200"}`}>
-              <p className={`text-xs font-bold ${isIndividual ? "text-teal-600" : isPro ? "text-blue-600" : "text-slate-500"}`}>
-                {isIndividual ? "🏋️ 個人プラン" : isPro ? "✦ Pro プラン" : "Free プラン"}
-              </p>
-              <p className="text-xs text-slate-500 mt-1">
-                {isIndividual
-                  ? "食事・体重・筋トレをLINEで記録。AIが自動解析してダッシュボードに表示"
-                  : isPro
-                  ? "クライアント最大10名 · AI解析無制限"
-                  : "クライアント1名まで · 無料で始める"}
-              </p>
-            </div>
-
-            {/* フロー説明 */}
             <div className="space-y-3">
-              <p className="text-xs font-semibold text-slate-600">使い方はシンプルです</p>
-              {(isIndividual ? [
-                { icon: "👤", t: "自分のダッシュボードを作成（PIN設定）" },
-                { icon: "📱", t: "LINEにスクショを送るだけで自動記録" },
-                { icon: "📊", t: "ダッシュボードでデータを確認・分析" },
-              ] : [
-                { icon: "👤", t: "クライアントを追加してURLとPINをシェア" },
-                { icon: "📱", t: "クライアントがLINEにスクショを送ると自動記録" },
-                { icon: "📊", t: "管理画面でリアルタイムにデータを確認" },
-              ]).map(({ icon, t }, i) => (
-                <div key={i} className="flex items-center gap-3 text-sm text-slate-600">
-                  <span className="text-xl w-8 text-center">{icon}</span>
-                  <span>{t}</span>
+              {[
+                { step: "1", icon: "📱", title: "LINE通知を連携する", desc: "AYF公式LINEにコードを送るだけ。クライアントの記録が届いたら通知が来ます" },
+                { step: "2", icon: "📨", title: "招待リンクが届く", desc: "連携完了と同時に、クライアントへの招待リンクがLINEで届きます。そのまま転送するだけ" },
+              ].map(({ step: n, icon, title, desc }) => (
+                <div key={n} className="flex items-start gap-3">
+                  <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-600 font-black text-xs flex items-center justify-center flex-none mt-0.5">{n}</span>
+                  <div>
+                    <p className="text-sm font-bold text-slate-700">{icon} {title}</p>
+                    <p className="text-xs text-slate-400 mt-0.5">{desc}</p>
+                  </div>
                 </div>
               ))}
-            </div>
-
-            {/* LINE説明バナー */}
-            <div className="bg-green-50 border border-green-200 rounded-xl p-3 flex gap-2.5 items-start">
-              <span className="text-green-500 text-lg flex-none">✓</span>
-              <div>
-                <p className="text-xs font-bold text-green-700">LINE連携はクライアントが自分でやります</p>
-                <p className="text-xs text-green-600 mt-0.5">
-                  トレーナー側の設定は一切不要。クライアントがAllYourFitのLINE公式を友達追加してPINを送るだけで自動的に連携されます。
-                </p>
-              </div>
             </div>
           </div>
 
           <button
             type="button"
-            onClick={() => setStep("client")}
-            className="w-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold py-4 rounded-2xl text-sm transition-colors shadow-sm"
+            onClick={() => setStep("line")}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-2xl text-sm transition-colors shadow-sm"
           >
-            {isIndividual ? "自分のダッシュボードを作成 →" : "最初のクライアントを追加 →"}
+            LINE通知を設定する →
           </button>
         </div>
       )}
 
-      {/* ── STEP 2: クライアント追加 ── */}
-      {step === "client" && (
+      {/* ── STEP 2: LINE連携（必須） ── */}
+      {step === "line" && (
         <div className="space-y-4">
-          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4">
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-5">
             <div>
               <p className="text-xs text-blue-600 font-bold uppercase tracking-widest">Step 1</p>
-              <h2 className="text-base font-black text-slate-800 mt-0.5">
-                {isIndividual ? "あなたのダッシュボードを作成" : "クライアントを追加"}
-              </h2>
-              <p className="text-xs text-slate-500 mt-1">
-                {isIndividual
-                  ? "名前とPINを設定してください。PINはLINE連携に使います。"
-                  : "クライアントの名前とPINを設定します。あとでURLとPINをLINEで送るだけ。"}
-              </p>
+              <h2 className="text-base font-black text-slate-800 mt-0.5">AYF公式LINEに友達追加 & コードを送る</h2>
+              <p className="text-xs text-slate-500 mt-1">クライアントが記録を送ったとき、あなたのLINEに通知が届くようになります</p>
             </div>
 
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1.5">
-                  {isIndividual ? "あなたのお名前" : "クライアントのお名前"}
-                </label>
-                <input
-                  type="text"
-                  value={clientName}
-                  onChange={(e) => setClientName(e.target.value)}
-                  placeholder={isIndividual ? trainer.name : "例: 田中 花子"}
-                  autoFocus
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all"
-                />
-              </div>
+            {/* フェーズ1: コード発行前 */}
+            {!lineCode && (
+              <div className="space-y-4">
+                <div className="space-y-2.5">
+                  {[
+                    "① 下の「コードを発行する」をタップ",
+                    "② 表示されたコードをコピー",
+                    "③ AYF公式LINEを友達追加",
+                    "④ コードをLINEに送信 → 完了",
+                  ].map((t, i) => (
+                    <div key={i} className="flex items-center gap-3 text-xs text-slate-600">
+                      <span className="w-5 h-5 rounded-full bg-blue-50 text-blue-500 font-bold text-[10px] flex items-center justify-center flex-none">{i + 1}</span>
+                      <span>{t.replace(/^[①-④] /, "")}</span>
+                    </div>
+                  ))}
+                </div>
 
-              <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1.5">PIN（4〜6桁）</label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={clientPin}
-                  onChange={(e) => setClientPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                  placeholder="例: 1234"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-mono tracking-[0.3em] focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all"
-                />
-                <p className="text-xs text-slate-400 mt-1">このPINをLINEに送ることで連携します</p>
-              </div>
+                {lineCodeError && (
+                  <div className="bg-rose-50 border border-rose-200 rounded-xl px-4 py-3 text-xs text-rose-600">
+                    {lineCodeError}
+                  </div>
+                )}
 
-              <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1.5">目標（任意）</label>
-                <input
-                  type="text"
-                  value={clientGoal}
-                  onChange={(e) => setClientGoal(e.target.value)}
-                  placeholder="例: 体脂肪率15%以下・大会出場"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all"
-                />
+                <button
+                  type="button"
+                  onClick={generateLineCode}
+                  disabled={lineCodeGenerating}
+                  className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-400 text-white font-bold py-3.5 rounded-xl text-sm transition-colors"
+                >
+                  {lineCodeGenerating ? "発行中..." : "🔑 コードを発行する"}
+                </button>
               </div>
-            </div>
+            )}
+
+            {/* フェーズ2: コード発行後 */}
+            {lineCode && (
+              <div className="space-y-4">
+                {/* コード表示 */}
+                <div className="bg-blue-50 border-2 border-blue-300 rounded-2xl p-5 text-center space-y-3">
+                  <p className="text-xs text-blue-600 font-bold">このコードをAYF公式LINEに送ってください</p>
+                  <p className="text-5xl font-black tracking-[0.4em] text-blue-700 font-mono">{lineCode}</p>
+                  {lineCodeExpiry && (
+                    <p className="text-[10px] text-slate-400">
+                      有効期限: {lineCodeExpiry.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })} まで
+                    </p>
+                  )}
+                  <button
+                    type="button"
+                    onClick={copy}
+                    className="w-full bg-white border border-blue-200 hover:bg-blue-50 text-blue-600 font-bold py-2.5 rounded-xl text-sm transition-colors"
+                  >
+                    {copied ? "✅ コピーしました" : "📋 コードをコピー"}
+                  </button>
+                </div>
+
+                {/* LINE友達追加ボタン */}
+                <a
+                  href={LINE_FRIEND_URL}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center justify-center gap-2 w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3.5 rounded-xl text-sm transition-colors"
+                >
+                  📱 AYF公式LINEを友達追加する
+                </a>
+
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-xs text-amber-700 space-y-2">
+                  <p className="font-bold">② LINEを確認してください</p>
+                  <p>AYF公式から「✅ LINE通知の連携が完了しました！」と返信が届いたら連携完了です。</p>
+                  <p className="text-amber-500">連携が確認できたら管理画面に進んでください👇</p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => router.replace("/trainer")}
+                  className="w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3.5 rounded-2xl text-sm transition-colors"
+                >
+                  連携完了 → 管理画面へ
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => { setLineCode(null); setLineCodeExpiry(null); setSentConfirmed(false); }}
+                  className="w-full text-xs text-slate-400 hover:text-slate-600 py-1 transition-colors"
+                >
+                  コードを再発行する
+                </button>
+              </div>
+            )}
           </div>
-
-          <button
-            type="button"
-            onClick={addClient}
-            disabled={adding || clientName.length === 0 || clientPin.length < 4}
-            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-400 text-white font-bold py-4 rounded-2xl text-sm transition-colors shadow-sm"
-          >
-            {adding ? "作成中..." : "作成する →"}
-          </button>
 
           <button type="button" onClick={() => setStep("welcome")} className="w-full text-xs text-slate-400 py-2">
             ← 戻る
@@ -214,76 +241,25 @@ export default function SetupGuide({ trainer, isIndividual = false }: Props) {
       )}
 
       {/* ── STEP 3: 完了 ── */}
-      {step === "done" && createdClientId && (
+      {step === "done" && (
         <div className="space-y-4">
           <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-5">
-            <div className="text-center space-y-1">
-              <p className="text-3xl">🚀</p>
-              <h2 className="text-base font-black text-slate-800">準備完了！</h2>
-              <p className="text-xs text-slate-500">
-                {isIndividual ? "下のURLにアクセスして始めましょう" : "クライアントにこの情報をLINEで送ってください"}
-              </p>
+            <div className="text-center space-y-2">
+              <p className="text-4xl">🚀</p>
+              <h2 className="text-lg font-black text-slate-800">セットアップ完了！</h2>
+              <p className="text-sm text-slate-500">LINEに招待リンクが届いています</p>
             </div>
 
-            {/* シェア情報 */}
-            <div className="space-y-2.5">
-              {/* クライアントURL */}
-              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-1.5">
-                <p className="text-xs text-slate-400 font-medium">ダッシュボードURL</p>
-                <p className="text-xs text-blue-600 font-mono break-all">{clientUrl}</p>
-                <button
-                  type="button"
-                  onClick={() => copy("url", clientUrl)}
-                  className="text-xs font-semibold text-blue-500 hover:text-blue-700"
-                >
-                  {copied === "url" ? "✅ コピーしました" : "📋 URLをコピー"}
-                </button>
-              </div>
-
-              {/* PIN */}
-              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-slate-400 font-medium">PIN番号</p>
-                  <p className="text-xl font-black font-mono tracking-[0.3em] text-slate-800 mt-0.5">{clientPin}</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => copy("pin", clientPin)}
-                  className="text-xs font-semibold text-blue-500 hover:text-blue-700"
-                >
-                  {copied === "pin" ? "✅" : "📋 コピー"}
-                </button>
-              </div>
-
-              {/* まとめてコピー */}
-              {!isIndividual && (
-                <button
-                  type="button"
-                  onClick={() => copy("msg", shareMessage)}
-                  className="w-full bg-green-500 hover:bg-green-600 active:bg-green-700 text-white font-bold py-3 rounded-xl text-sm transition-colors flex items-center justify-center gap-2"
-                >
-                  {copied === "msg" ? "✅ コピーしました！" : "📤 LINEで送る文面をコピー"}
-                </button>
-              )}
-            </div>
-
-            {/* 次のステップ */}
-            <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 space-y-2">
-              <p className="text-xs font-bold text-blue-700">
-                {isIndividual ? "始め方" : "クライアントへの案内"}
-              </p>
-              {(isIndividual ? [
-                "上のURLにアクセスしてPINでログイン",
-                "AllYourFit LINE公式を友達追加",
-                "LINEにPINを送信 → 問診スタート（約2分）",
-                "食事・筋トレ・体重のスクショを送ると自動記録",
-              ] : [
-                "上の文面をコピーしてLINEで送信",
-                "クライアントがURLにアクセスしてPINでログイン",
-                "AllYourFit LINEを友達追加してPINを送信",
-                "問診完了後、管理画面に通知が届きます",
-              ]).map((t, i) => (
-                <div key={i} className="flex items-start gap-2 text-xs text-blue-600">
+            <div className="bg-green-50 border border-green-200 rounded-xl p-4 space-y-2">
+              <p className="text-xs font-bold text-green-700">次にやること</p>
+              {[
+                "ダッシュボードの「招待リンク発行」をタップ",
+                "クライアント名を入力してリンクを発行",
+                "リンクとPINをクライアントに送る",
+                "クライアントがリンクから登録 → LINEでPINを送信",
+                "スクショを送るだけで自動記録スタート 📊",
+              ].map((t, i) => (
+                <div key={i} className="flex items-start gap-2 text-xs text-green-600">
                   <span className="font-bold flex-none">{i + 1}.</span>
                   <span>{t}</span>
                 </div>

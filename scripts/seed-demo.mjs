@@ -163,7 +163,7 @@ async function seed() {
     if (setsErr) { console.error("sets error:", setsErr.message); }
   }
 
-  console.log("✅ 完了！ https://medifit-client-app.vercel.app/demo で確認してください");
+  console.log("✅ 完了！ https://allyourfit.com/demo で確認してください");
 }
 
 seed().catch(console.error);

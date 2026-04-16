@@ -1,8 +1,8 @@
 export const dynamic = "force-dynamic";
 
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createServerClient } from "@/lib/supabase";
+import { getTrainerId } from "@/lib/trainer-auth";
 import SetupGuide from "./SetupGuide";
 
 export default async function SetupPage({
@@ -10,8 +10,7 @@ export default async function SetupPage({
 }: {
   searchParams: Promise<{ mode?: string }>;
 }) {
-  const cookieStore = await cookies();
-  const trainerId = cookieStore.get("trainer_id")?.value ?? process.env.TRAINER_ID;
+  const trainerId = await getTrainerId();
   if (!trainerId) redirect("/trainer/login");
 
   const supabase = createServerClient();

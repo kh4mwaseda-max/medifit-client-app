@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { stripe, PRO_PRICE_ID } from "@/lib/stripe";
+import { getStripe, PRO_PRICE_ID } from "@/lib/stripe";
 import { getTrainerId } from "@/lib/trainer-auth";
 import { createServerClient } from "@/lib/supabase";
 
+const BILLING_ENABLED = process.env.BILLING_ENABLED === "true";
+
 // POST /api/stripe/checkout — Proプランのチェックアウトセッション作成
 export async function POST(req: NextRequest) {
-  const trainerId = await getTrainerId() ?? process.env.TRAINER_ID;
+  if (!BILLING_ENABLED) return NextResponse.json({ error: "Billing is not enabled" }, { status: 403 });
+  const trainerId = await getTrainerId();
   if (!trainerId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const supabase = createServerClient();
@@ -23,7 +26,7 @@ export async function POST(req: NextRequest) {
   // Stripeカスタマー作成 or 既存使用
   let customerId = trainer.stripe_customer_id;
   if (!customerId) {
-    const customer = await stripe.customers.create({
+    const customer = await getStripe().customers.create({
       email: trainer.email ?? undefined,
       name: trainer.name ?? undefined,
       metadata: { trainer_id: trainerId },
@@ -35,7 +38,7 @@ export async function POST(req: NextRequest) {
       .eq("id", trainerId);
   }
 
-  const session = await stripe.checkout.sessions.create({
+  const session = await getStripe().checkout.sessions.create({
     customer: customerId,
     mode: "subscription",
     line_items: [{ price: PRO_PRICE_ID, quantity: 1 }],

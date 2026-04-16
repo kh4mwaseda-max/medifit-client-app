@@ -1,108 +1,54 @@
 "use client";
 
-import { useState, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link";
 import Logo from "@/components/Logo";
+import Link from "next/link";
 
-function LoginForm() {
-  const searchParams = useSearchParams();
-  const [email, setEmail] = useState(searchParams.get("email") ?? "");
-  const [password, setPassword] = useState("");
-  const isExisting = searchParams.get("hint") === "existing";
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const router = useRouter();
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-
-    const res = await fetch("/api/trainer/auth", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: email || undefined, password }),
-    });
-
-    if (res.ok) {
-      router.replace("/trainer");
-    } else {
-      const data = await res.json();
-      setError(data.error ?? "ログインに失敗しました");
-      setPassword("");
-    }
-    setLoading(false);
-  };
-
-  return (
-    <div className="w-full max-w-sm space-y-8">
-      <div className="flex flex-col items-center gap-3">
-        <Logo size="lg" variant="mark" />
-        <div className="text-center">
-          <h1 className="text-xl font-bold text-slate-800 tracking-tight">AllYourFit</h1>
-          <p className="mt-1 text-sm text-slate-500">トレーナー管理画面</p>
-        </div>
-      </div>
-
-      {isExisting && (
-        <div className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 text-xs text-amber-700">
-          このメールアドレスは既に登録されています。パスワードを入力してログインしてください。
-        </div>
-      )}
-
-      <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 space-y-4">
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-1.5">
-            <label className="block text-xs text-slate-500 font-medium">メールアドレス</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-800 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all text-sm"
-              placeholder="trainer@example.com"
-              autoFocus
-            />
-          </div>
-          <div className="space-y-1.5">
-            <label className="block text-xs text-slate-500 font-medium">パスワード</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-800 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all text-sm"
-              placeholder="••••••••"
-            />
-          </div>
-
-          {error && <p className="text-rose-500 text-sm text-center">{error}</p>}
-
-          <button
-            type="submit"
-            disabled={!password || loading}
-            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-100 disabled:text-slate-400 text-white font-semibold py-3 rounded-xl transition-colors text-sm shadow-md shadow-blue-100"
-          >
-            {loading ? "確認中..." : "ログイン"}
-          </button>
-        </form>
-      </div>
-
-      <p className="text-center text-xs text-slate-400">
-        アカウントをお持ちでない方は{" "}
-        <Link href="/trainer/register" className="text-blue-500 hover:underline">
-          新規登録
-        </Link>
-      </p>
-    </div>
-  );
-}
+const LINE_FRIEND_URL = process.env.NEXT_PUBLIC_LINE_FRIEND_URL ?? "https://line.me/ti/p/@293ziugt";
 
 export default function TrainerLogin() {
   return (
     <main className="min-h-screen flex flex-col items-center justify-center p-8 bg-slate-50">
-      <Suspense fallback={<div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />}>
-        <LoginForm />
-      </Suspense>
+      <div className="w-full max-w-sm space-y-8">
+        <div className="flex flex-col items-center gap-3">
+          <Logo size="lg" variant="mark" />
+          <div className="text-center">
+            <h1 className="text-xl font-bold text-slate-800 tracking-tight">AllYourFit</h1>
+            <p className="mt-1 text-sm text-slate-500">ログイン</p>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 space-y-5">
+          <div className="text-center space-y-2">
+            <p className="text-2xl">📱</p>
+            <p className="text-sm font-bold text-slate-800">AYF公式LINEからログイン</p>
+            <p className="text-xs text-slate-500">
+              AYF公式LINEに<span className="font-bold text-slate-700">「ログイン」</span>と送ると<br />
+              ワンタイムログインリンクが届きます
+            </p>
+          </div>
+
+          <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-center">
+            <p className="text-xs text-slate-400 mb-1">LINEに送る文言</p>
+            <p className="text-xl font-black text-slate-800 tracking-widest">ログイン</p>
+          </div>
+
+          <a
+            href={LINE_FRIEND_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center justify-center gap-2 w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3.5 rounded-xl text-sm transition-colors"
+          >
+            📱 AYF公式LINEを開く
+          </a>
+        </div>
+
+        <p className="text-center text-xs text-slate-400">
+          アカウントをお持ちでない方は{" "}
+          <Link href="/trainer/register" className="text-blue-500 hover:underline">
+            新規登録
+          </Link>
+        </p>
+      </div>
     </main>
   );
 }

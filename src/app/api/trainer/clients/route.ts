@@ -1,14 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { getTrainerId } from "@/lib/trainer-auth";
-
-async function resolveTrainerId(): Promise<string | null> {
-  const id = await getTrainerId();
-  return id ?? process.env.TRAINER_ID ?? null;
-}
+import { randomBytes } from "crypto";
 
 export async function GET() {
-  const trainerId = await resolveTrainerId();
+  const trainerId = await getTrainerId();
   if (!trainerId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const supabase = createServerClient();
@@ -23,21 +19,22 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const trainerId = await resolveTrainerId();
+  const trainerId = await getTrainerId();
   if (!trainerId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { name, pin, goal, start_date } = await req.json();
-  if (!name || !pin) return NextResponse.json({ error: "name and pin are required" }, { status: 400 });
+  const { name, goal, start_date } = await req.json();
+  if (!name) return NextResponse.json({ error: "name is required" }, { status: 400 });
 
-  // Free プランはクライアント1人まで
   const supabase = createServerClient();
-  const { data: trainer } = await supabase.from("trainers").select("plan").eq("id", trainerId).single();
-  if (trainer?.plan === "free") {
-    const { count } = await supabase.from("clients").select("id", { count: "exact", head: true }).eq("trainer_id", trainerId);
-    if ((count ?? 0) >= 1) {
-      return NextResponse.json({ error: "Free プランはクライアント1名まで。Proにアップグレードしてください。" }, { status: 403 });
-    }
+
+  // 衝突しない6桁PINを自動生成（最大10回リトライ）
+  let pin: string | null = null;
+  for (let i = 0; i < 10; i++) {
+    const candidate = String(100000 + (randomBytes(3).readUIntBE(0, 3) % 900000));
+    const { count } = await supabase.from("clients").select("id", { count: "exact", head: true }).eq("pin", candidate);
+    if ((count ?? 1) === 0) { pin = candidate; break; }
   }
+  if (!pin) return NextResponse.json({ error: "PIN生成に失敗しました。再試行してください。" }, { status: 500 });
 
   const { data, error } = await supabase
     .from("clients")

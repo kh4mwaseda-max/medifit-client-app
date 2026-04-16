@@ -2,7 +2,8 @@
 import ClientDashboard from "@/components/ClientDashboard";
 import { createServerClient } from "@/lib/supabase";
 
-const DEMO_CLIENT_ID = "309a5ad3-d7f2-4ba5-99dd-a95a6e6b00cd";
+// デモ専用UUID（本番DBには存在しないID）
+const DEMO_CLIENT_ID = "00000000-0000-0000-0000-000000000001";
 
 export const revalidate = 0;
 

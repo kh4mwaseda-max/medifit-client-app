@@ -1,12 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createServerClient } from "@/lib/supabase";
+import { getTrainerId, verifyClientOwnership } from "@/lib/trainer-auth";
 
 const anthropic = new Anthropic();
 
 export async function POST(req: NextRequest) {
+  const trainerId = await getTrainerId();
+  if (!trainerId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const { clientId } = await req.json();
   if (!clientId) return NextResponse.json({ error: "clientId required" }, { status: 400 });
+
+  const ownership = await verifyClientOwnership(trainerId, clientId);
+  if (!ownership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const supabase = createServerClient();
 

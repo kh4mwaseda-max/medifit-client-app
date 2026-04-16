@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
-import { getTrainerId } from "@/lib/trainer-auth";
+import { getTrainerId, verifyClientOwnership } from "@/lib/trainer-auth";
 
 // GET /api/trainer/goals?clientId=xxx
 export async function GET(req: NextRequest) {
+  const trainerId = await getTrainerId();
+  if (!trainerId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const clientId = req.nextUrl.searchParams.get("clientId");
   if (!clientId) return NextResponse.json({ error: "clientId required" }, { status: 400 });
+
+  const ownership = await verifyClientOwnership(trainerId, clientId);
+  if (!ownership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const supabase = createServerClient();
   const { data, error } = await supabase
@@ -24,13 +30,16 @@ export async function GET(req: NextRequest) {
 
 // POST /api/trainer/goals — 作成 or 置き換え
 export async function POST(req: NextRequest) {
-  const trainerId = await getTrainerId() ?? process.env.TRAINER_ID;
+  const trainerId = await getTrainerId();
   if (!trainerId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
   const { clientId, ...fields } = body;
 
   if (!clientId) return NextResponse.json({ error: "clientId required" }, { status: 400 });
+
+  const ownership = await verifyClientOwnership(trainerId, clientId);
+  if (!ownership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const supabase = createServerClient();
 

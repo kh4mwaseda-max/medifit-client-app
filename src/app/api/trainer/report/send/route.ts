@@ -1,14 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { pushMessage } from "@/lib/line";
+import { getTrainerId, verifyClientOwnership } from "@/lib/trainer-auth";
 import type { ReportData } from "../route";
 
 // POST /api/trainer/report/send — 週次/月次レポートをLINEで送信
 export async function POST(req: NextRequest) {
+  const trainerId = await getTrainerId();
+  if (!trainerId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const { clientId, report }: { clientId: string; report: ReportData } = await req.json();
   if (!clientId || !report) {
     return NextResponse.json({ error: "clientId and report required" }, { status: 400 });
   }
+
+  const ownership = await verifyClientOwnership(trainerId, clientId);
+  if (!ownership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const supabase = createServerClient();
   const { data: client } = await supabase

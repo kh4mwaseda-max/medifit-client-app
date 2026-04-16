@@ -149,7 +149,7 @@ AYFのシステムをそのまま貸し出す。
 ## 2. 時間軸ロードマップ
 
 ### Phase 0: 今すぐ（2026年4月）
-- [x] デモURL公開（medifit-client-app.vercel.app/demo）
+- [x] デモURL公開（allyourfit.com/demo）
 - [ ] Supabase + LINE + Vercel 本番環境構築
 - [ ] 稲川さん自身のデータで運用開始（自己実証）
 - [ ] Starterプランを友人トレーナー3〜5人に無料提供

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { format, parseISO } from "date-fns";
 import { ja } from "date-fns/locale";
 
@@ -11,12 +12,52 @@ const RISK_STYLES = {
   high:   { bg: "bg-rose-50",   text: "text-rose-700",  border: "border-rose-100",  badge: "bg-rose-100 text-rose-600"   },
 };
 
-export default function AssessmentCard({ assessment }: { assessment: any | null }) {
+export default function AssessmentCard({ assessment: initialAssessment, clientId }: { assessment: any | null; clientId?: string }) {
+  const [assessment, setAssessment] = useState(initialAssessment);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSelfGenerate = async () => {
+    if (!clientId) return;
+    setLoading(true);
+    setError(null);
+    const res = await fetch("/api/assessment/self-generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ clientId }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      setAssessment(data.assessment);
+    } else {
+      setError(data.error ?? "生成に失敗しました");
+    }
+    setLoading(false);
+  };
+
   if (!assessment) {
     return (
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm text-center py-14 space-y-2">
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm text-center py-10 space-y-4 px-4">
         <p className="text-slate-400">アセスメントはまだ作成されていません</p>
-        <p className="text-sm text-slate-300">トレーナーが生成後に表示されます</p>
+        {clientId ? (
+          <div className="space-y-2">
+            <button
+              type="button"
+              onClick={handleSelfGenerate}
+              disabled={loading}
+              className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-semibold py-3 rounded-xl text-sm transition-colors flex items-center justify-center gap-2"
+            >
+              {loading
+                ? <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /><span>AI分析中...</span></>
+                : <><span>✦</span><span>AIアセスメントを生成する</span></>
+              }
+            </button>
+            {error && <p className="text-xs text-rose-500">{error}</p>}
+            <p className="text-xs text-slate-400">食事・体重・トレーニングデータをもとにAIが分析します</p>
+          </div>
+        ) : (
+          <p className="text-sm text-slate-300">トレーナーが生成後に表示されます</p>
+        )}
       </div>
     );
   }

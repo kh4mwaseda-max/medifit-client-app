@@ -8,7 +8,7 @@ export type DataCategory = "meal" | "training" | "body" | "cardio" | "unknown";
 export interface MealResult {
   app_type: "meal";
   source_app: string;       // "あすけん" / "MyFitnessPal" / "カロミル" 等
-  date: string;             // YYYY-MM-DD
+  date: string | null;      // YYYY-MM-DD、日付不明の場合はnull
   meals: {
     meal_type: "breakfast" | "lunch" | "dinner" | "snack";
     food_name: string;
@@ -27,7 +27,7 @@ export interface MealResult {
 export interface TrainingResult {
   app_type: "training";
   source_app: string;       // "筋トレメモ" / "STRONG" / "Hevy" 等
-  date: string;             // YYYY-MM-DD
+  date: string | null;      // YYYY-MM-DD、日付不明の場合はnull
   sets: {
     exercise_name: string;
     muscle_group: string | null;
@@ -43,7 +43,7 @@ export interface TrainingResult {
 export interface BodyResult {
   app_type: "body";
   source_app: string;       // "タニタ" / "Withings" / "OMRON" 等
-  date: string;             // YYYY-MM-DD
+  date: string | null;      // YYYY-MM-DD、日付不明の場合はnull
   weight_kg: number | null;
   body_fat_pct: number | null;
   muscle_mass_kg: number | null;
@@ -57,7 +57,7 @@ export interface BodyResult {
 export interface CardioResult {
   app_type: "cardio";
   source_app: string;       // "Strava" / "Nike Run Club" / "Garmin" 等
-  date: string;             // YYYY-MM-DD
+  date: string | null;      // YYYY-MM-DD、日付不明の場合はnull
   activity_type: string;    // "ランニング" / "サイクリング" / "ウォーキング" 等
   distance_km: number | null;
   duration_seconds: number | null;
@@ -209,7 +209,7 @@ JSON以外のテキストは絶対に含めないでください。
 ---
 
 注意事項：
-- 日付が画面にない場合は今日の日付（${new Date().toISOString().split("T")[0]}）を使用
+- 日付が画面に明示されていない場合は "date": null にする（推測しない）
 - 数値は単位を除いた数字のみ（例: "250kcal" → 250, "5km" → 5）
 - 読み取れない値はnullにする
 - 複数の食事・種目・セットが表示されていれば全て抽出する

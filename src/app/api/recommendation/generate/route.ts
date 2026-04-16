@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateRecommendation, type PHRInput } from "@/lib/recommendation-engine";
+import { getTrainerId } from "@/lib/trainer-auth";
 
 export async function POST(req: NextRequest) {
+  const trainerId = await getTrainerId();
+  if (!trainerId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   try {
     const { phrInput }: { phrInput: PHRInput } = await req.json();
     if (!phrInput) {

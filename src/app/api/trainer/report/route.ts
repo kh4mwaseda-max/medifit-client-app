@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
+import { getTrainerId, verifyClientOwnership } from "@/lib/trainer-auth";
 import { subDays, subMonths, format, startOfWeek, endOfWeek } from "date-fns";
 import { ja } from "date-fns/locale";
 
@@ -46,12 +47,18 @@ export interface ReportData {
 
 // GET /api/trainer/report?clientId=xxx&period=weekly|monthly&offset=0
 export async function GET(req: NextRequest) {
+  const trainerId = await getTrainerId();
+  if (!trainerId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const sp = req.nextUrl.searchParams;
   const clientId = sp.get("clientId");
   const period = (sp.get("period") ?? "weekly") as ReportPeriod;
   const offset = parseInt(sp.get("offset") ?? "0");  // 0=直近, 1=前期, ...
 
   if (!clientId) return NextResponse.json({ error: "clientId required" }, { status: 400 });
+
+  const ownership = await verifyClientOwnership(trainerId, clientId);
+  if (!ownership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const supabase = createServerClient();
   const today = new Date();
