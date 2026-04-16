@@ -5,10 +5,9 @@ import { randomBytes } from "crypto";
 
 /**
  * POST /api/onboarding
- * 個人プランの初回オンボーディングデータを一括保存する。
- * - クライアントレコード作成
- * - 初回 body_record 保存
- * - client_goals 保存
+ * [DEPRECATED] 個人プランは廃止済み。トレーナープランのみ。
+ * このAPIは後方互換のために残しているが、新規利用は非推奨。
+ * クライアントのオンボーディングはLINE Webhook経由で行う。
  * Returns: { clientId, clientPin }
  */
 export async function POST(req: NextRequest) {
@@ -38,7 +37,7 @@ export async function POST(req: NextRequest) {
   const { data: trainer } = await supabase.from("trainers").select("name").eq("id", trainerId).single();
   const clientName = name || trainer?.name || "ユーザー";
 
-  // 既存のクライアント確認（個人プランは自分自身が唯一のクライアント）
+  // 既存のクライアント確認
   const { data: existing } = await supabase
     .from("clients")
     .select("id, pin")

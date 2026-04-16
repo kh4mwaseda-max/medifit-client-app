@@ -79,7 +79,7 @@ export default function JoinPage() {
         {pin && (
           <div className="w-full max-w-xs bg-white/5 border border-white/20 rounded-2xl p-5 space-y-3 text-center">
             <p className="text-xs text-blue-400 font-bold">次のステップ：LINE連携</p>
-            <p className="text-xs text-slate-400">AYF公式LINEを友達追加して、このPINを送ってください</p>
+            <p className="text-xs text-slate-400">Client Fit公式LINEを友達追加して、このPINを送ってください</p>
             <p className="text-4xl font-black font-mono tracking-[0.4em] text-white">{pin}</p>
             <p className="text-[10px] text-slate-500">スクショを送るだけで自動記録が始まります</p>
           </div>
@@ -108,7 +108,7 @@ export default function JoinPage() {
 
         <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
           <div>
-            <p className="text-xs font-bold text-blue-400 uppercase tracking-widest mb-1">AllYourFit とは</p>
+            <p className="text-xs font-bold text-blue-400 uppercase tracking-widest mb-1">Client Fit とは</p>
             <p className="text-xs text-slate-400 leading-relaxed">
               あすけん・STRONG・タニタ等のスクショをLINEに送るだけで、食事・体重・トレーニングが自動記録されます。AIがデータを統合分析してトレーナーが指導できます。
             </p>

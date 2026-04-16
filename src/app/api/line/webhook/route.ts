@@ -158,7 +158,7 @@ async function handleEvent(event: any) {
             .eq("id", trainerWithCode.id);
 
           await replyMessage(replyToken,
-            `✅ LINE通知の連携が完了しました！\n\n${trainerWithCode.name} さん、ようこそ AllYourFit へ！\n\n【これからの流れ】\n1️⃣ 管理画面の「＋追加」でクライアントを登録\n2️⃣ 案内文をコピーしてクライアントへ送信\n3️⃣ クライアントがPINを公式LINEに送ると自動連携\n4️⃣ クライアントが基礎データを入力 → ここに通知\n5️⃣ アセスメント生成 → 目標設定 → LINEで送信\n\n📋 管理画面\nhttps://allyourfit.com/trainer`
+            `✅ LINE通知の連携が完了しました！\n\n${trainerWithCode.name} さん、ようこそ Client Fit へ！\n\n【これからの流れ】\n1️⃣ 管理画面の「＋追加」でクライアントを登録\n2️⃣ 案内文をコピーしてクライアントへ送信\n3️⃣ クライアントがPINを公式LINEに送ると自動連携\n4️⃣ クライアントが基礎データを入力 → ここに通知\n5️⃣ アセスメント生成 → 目標設定 → LINEで送信\n\n📋 管理画面\nhttps://allyourfit.com/trainer`
           );
         }
         return;

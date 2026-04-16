@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
     await supabase.from("register_attempts").insert({ ip, attempt_count: 1, window_start: new Date().toISOString() });
   }
 
-  const { name, user_type } = await req.json();
+  const { name } = await req.json();
   if (!name?.trim()) {
     return NextResponse.json({ error: "名前は必須です" }, { status: 400 });
   }
@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
     .insert({
       name: name.trim(),
       plan: "free",
-      user_type: user_type === "individual" ? "individual" : "trainer",
+      user_type: "trainer",
       trial_ends_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
     })
     .select("id, plan")

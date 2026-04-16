@@ -54,11 +54,11 @@ export default function NewClientPage() {
   };
 
   const trainerLabel = trainerName ? `トレーナーの ${trainerName}` : "トレーナー";
-  const shareText = `【AllYourFit】${name} さんへ
+  const shareText = `【Client Fit】${name} さんへ
 
 ${trainerLabel}です。いつもありがとうございます！
 
-まずはAYF公式LINEを友達追加してください👇
+まずはClient Fit公式LINEを友達追加してください👇
 ${LINE_FRIEND_URL}
 
 友達追加後、以下のPINコードをLINEに送信してください：

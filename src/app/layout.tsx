@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "AllYourFit | あなたの進捗レポート",
+  title: "Client Fit | トレーナー向けクライアント管理",
   description: "パーソナルトレーナーからの進捗レポート",
   icons: {
     icon: [

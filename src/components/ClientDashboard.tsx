@@ -330,7 +330,7 @@ export default function ClientDashboard({
             }
           />
 
-          {/* ④ 体重 × カロリー収支 相関グラフ（AYF差別化の核） */}
+          {/* ④ 体重 × カロリー収支 相関グラフ（Client Fit差別化の核） */}
           {weightCalorieData.length >= 3 && (
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
               <div className="flex items-center justify-between mb-1">
@@ -341,7 +341,7 @@ export default function ClientDashboard({
                   <p className="text-[9px] text-slate-400">統合分析</p>
                   <ShareButton
                     targetId="chart-weight-calorie"
-                    shareText={`【AYF記録】${client.name}の体重×カロリー収支グラフ`}
+                    shareText={`【Client Fit記録】${client.name}の体重×カロリー収支グラフ`}
                   />
                 </div>
               </div>
@@ -453,7 +453,7 @@ export default function ClientDashboard({
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">身体データ</p>
               <ShareButton
                 targetId="chart-body"
-                shareText={`【AYF記録】${client.name}の体重推移グラフ`}
+                shareText={`【Client Fit記録】${client.name}の体重推移グラフ`}
               />
             </div>
             <div id="chart-body" className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm">
@@ -594,7 +594,7 @@ function ReferralBanner({ clientId }: { clientId: string }) {
 
   const copy = () => {
     navigator.clipboard.writeText(
-      `AYFで食事・トレーニング・体重を一元管理中！\nスクショをLINEに送るだけで自動記録されます。\n${url}`
+      `Client Fitで食事・トレーニング・体重を一元管理中！\nスクショをLINEに送るだけで自動記録されます。\n${url}`
     );
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -604,7 +604,7 @@ function ReferralBanner({ clientId }: { clientId: string }) {
     <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-2xl p-4 flex items-center justify-between gap-3 print:hidden">
       <div>
         <p className="text-xs font-bold text-blue-700">友達に紹介する</p>
-        <p className="text-[10px] text-slate-500 mt-0.5">AYFを使っている友達・仲間を招待しよう</p>
+        <p className="text-[10px] text-slate-500 mt-0.5">Client Fitを使っている友達・仲間を招待しよう</p>
       </div>
       <button
         type="button"

@@ -96,7 +96,7 @@ export interface IntegratedPHR {
   myna_portal: MynaPortalData | null;
   wearable: WearableData[];
 
-  // AllYourFit内部データ（既存）
+  // Client Fit内部データ（既存）
   body_records: any[];
   training_sessions: any[];
   meal_records: any[];

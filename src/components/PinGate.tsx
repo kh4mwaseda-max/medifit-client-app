@@ -43,7 +43,7 @@ export default function PinGate({ clientId, clientName }: Props) {
         <div className="flex flex-col items-center gap-3">
           <Logo size="lg" variant="mark" />
           <div className="text-center">
-            <h1 className="text-xl font-bold text-slate-800 tracking-tight">AllYourFit</h1>
+            <h1 className="text-xl font-bold text-slate-800 tracking-tight">Client Fit</h1>
             <p className="mt-1 text-sm text-slate-500">{clientName} さんの健康ダッシュボード</p>
           </div>
         </div>

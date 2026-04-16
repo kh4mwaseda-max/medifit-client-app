@@ -12,7 +12,7 @@ export default function TrainerLogin() {
         <div className="flex flex-col items-center gap-3">
           <Logo size="lg" variant="mark" />
           <div className="text-center">
-            <h1 className="text-xl font-bold text-slate-800 tracking-tight">AllYourFit</h1>
+            <h1 className="text-xl font-bold text-slate-800 tracking-tight">Client Fit</h1>
             <p className="mt-1 text-sm text-slate-500">ログイン</p>
           </div>
         </div>
@@ -20,9 +20,9 @@ export default function TrainerLogin() {
         <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 space-y-5">
           <div className="text-center space-y-2">
             <p className="text-2xl">📱</p>
-            <p className="text-sm font-bold text-slate-800">AYF公式LINEからログイン</p>
+            <p className="text-sm font-bold text-slate-800">Client Fit公式LINEからログイン</p>
             <p className="text-xs text-slate-500">
-              AYF公式LINEに<span className="font-bold text-slate-700">「ログイン」</span>と送ると<br />
+              Client Fit公式LINEに<span className="font-bold text-slate-700">「ログイン」</span>と送ると<br />
               ワンタイムログインリンクが届きます
             </p>
           </div>
@@ -38,7 +38,7 @@ export default function TrainerLogin() {
             rel="noreferrer"
             className="flex items-center justify-center gap-2 w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3.5 rounded-xl text-sm transition-colors"
           >
-            📱 AYF公式LINEを開く
+            📱 Client Fit公式LINEを開く
           </a>
         </div>
 

@@ -205,7 +205,7 @@ export default function TrainerSettingsForm({ trainer, justUpgraded }: Props) {
         ) : lineCode ? (
           <div className="space-y-3">
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-center">
-              <p className="text-xs text-slate-400 mb-2">AllYourFit LINEにこのコードを送ってください</p>
+              <p className="text-xs text-slate-400 mb-2">Client Fit LINEにこのコードを送ってください</p>
               <p className="text-3xl font-black tracking-[0.3em] text-slate-800 font-mono">{lineCode}</p>
               <p className="text-xs text-amber-500 mt-2">
                 {Math.floor(secondsLeft / 60)}:{String(secondsLeft % 60).padStart(2, "0")} で失効
@@ -213,7 +213,7 @@ export default function TrainerSettingsForm({ trainer, justUpgraded }: Props) {
             </div>
             <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 space-y-1.5">
               <p className="text-xs font-bold text-blue-700">手順</p>
-              <p className="text-xs text-blue-600">1. AllYourFit LINE公式を友達追加</p>
+              <p className="text-xs text-blue-600">1. Client Fit LINE公式を友達追加</p>
               <p className="text-xs text-blue-600">2. 上の6桁コードをそのままLINEに送信</p>
               <p className="text-xs text-blue-600">3. 「連携しました」が届いたら完了</p>
             </div>

@@ -28,7 +28,7 @@ export default function InviteButton() {
   };
 
   const shareText = result
-    ? `【AllYourFit 招待】\n\n登録リンク：\n${result.inviteUrl}\n\n登録後、AYF公式LINEを友達追加してPIN「${result.pin}」を送ると連携完了です✅`
+    ? `【Client Fit 招待】\n\n登録リンク：\n${result.inviteUrl}\n\n登録後、Client Fit公式LINEを友達追加してPIN「${result.pin}」を送ると連携完了です✅`
     : "";
 
   const copy = () => {

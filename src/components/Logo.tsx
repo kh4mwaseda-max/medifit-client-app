@@ -1,5 +1,5 @@
-// AllYourFit ロゴコンポーネント
-// コンセプト: 医療×フィットネス。心電図の波形（バイタルライン）＋上昇する人体シルエット
+// Client Fit ロゴコンポーネント
+// コンセプト: トレーナー向けクライアント管理。クリップボード＋人体シルエット
 
 interface Props {
   size?: "sm" | "md" | "lg" | "xl";
@@ -24,11 +24,11 @@ export default function Logo({ size = "md", variant = "full", theme = "light" }:
       {variant === "full" && (
         <div className="flex flex-col leading-none">
           <span className={`font-black tracking-tight ${textColor} ${s.text}`}>
-            AllYourFit
+            Client Fit
           </span>
           {size === "lg" || size === "xl" ? (
             <span className={`text-[10px] tracking-widest ${subColor} font-medium mt-0.5 uppercase`}>
-              Personal Health Intelligence
+              Client Management for Trainers
             </span>
           ) : null}
         </div>
@@ -38,7 +38,7 @@ export default function Logo({ size = "md", variant = "full", theme = "light" }:
 }
 
 export function LogoMark({ size = 36 }: { size?: number }) {
-  const r = size * 0.2; // corner radius
+  const r = size * 0.2;
   return (
     <svg
       width={size}
@@ -49,45 +49,39 @@ export function LogoMark({ size = 36 }: { size?: number }) {
       className="shrink-0"
     >
       <defs>
-        <linearGradient id="ayf-bg-grad" x1="0" y1="0" x2="100" y2="100" gradientUnits="userSpaceOnUse">
+        <linearGradient id="cf-bg-grad" x1="0" y1="0" x2="100" y2="100" gradientUnits="userSpaceOnUse">
           <stop offset="0%"   stopColor="#3b82f6" />
           <stop offset="100%" stopColor="#0ea5e9" />
         </linearGradient>
-        <linearGradient id="ayf-line-grad" x1="0" y1="0" x2="100" y2="0" gradientUnits="userSpaceOnUse">
+        <linearGradient id="cf-line-grad" x1="0" y1="0" x2="100" y2="0" gradientUnits="userSpaceOnUse">
           <stop offset="0%"   stopColor="#ffffff" stopOpacity="0.5" />
           <stop offset="100%" stopColor="#ffffff" stopOpacity="1" />
         </linearGradient>
-        <clipPath id="ayf-clip">
+        <clipPath id="cf-clip">
           <rect width="100" height="100" rx={r * 5} ry={r * 5} />
         </clipPath>
       </defs>
 
       {/* 背景 */}
-      <rect width="100" height="100" rx={r * 5} ry={r * 5} fill="url(#ayf-bg-grad)" />
+      <rect width="100" height="100" rx={r * 5} ry={r * 5} fill="url(#cf-bg-grad)" />
 
-      {/* 人体シルエット（上昇ポーズ＝腕を上げたフィットネス人物） */}
-      {/* 頭 */}
+      {/* 人体シルエット（上昇ポーズ） */}
       <circle cx="50" cy="22" r="9" fill="white" fillOpacity="0.95" />
-      {/* 胴体 */}
       <rect x="44" y="33" width="12" height="22" rx="4" fill="white" fillOpacity="0.95" />
-      {/* 右腕（上げる） */}
       <path d="M44 38 L28 22" stroke="white" strokeWidth="7" strokeLinecap="round" strokeOpacity="0.95" />
-      {/* 左腕（上げる） */}
       <path d="M56 38 L72 22" stroke="white" strokeWidth="7" strokeLinecap="round" strokeOpacity="0.95" />
-      {/* 右脚 */}
       <path d="M47 54 L40 75" stroke="white" strokeWidth="7" strokeLinecap="round" strokeOpacity="0.95" />
-      {/* 左脚 */}
       <path d="M53 54 L60 75" stroke="white" strokeWidth="7" strokeLinecap="round" strokeOpacity="0.95" />
 
-      {/* 心電図ライン（下部にオーバーレイ） */}
+      {/* 心電図ライン（下部） */}
       <path
         d="M8 84 L22 84 L28 72 L34 94 L40 78 L46 84 L54 84 L60 76 L66 90 L72 84 L92 84"
-        stroke="url(#ayf-line-grad)"
+        stroke="url(#cf-line-grad)"
         strokeWidth="3.5"
         strokeLinecap="round"
         strokeLinejoin="round"
         fill="none"
-        clipPath="url(#ayf-clip)"
+        clipPath="url(#cf-clip)"
       />
     </svg>
   );

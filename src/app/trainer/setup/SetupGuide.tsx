@@ -7,14 +7,13 @@ import Logo from "@/components/Logo";
 interface Props {
   trainer: { id: string; name: string; plan: string; line_channel_access_token: string | null };
   webhookUrl: string;
-  isIndividual?: boolean;
 }
 
 const LINE_FRIEND_URL = process.env.NEXT_PUBLIC_LINE_FRIEND_URL ?? "https://lin.ee/YOUR_LINE_ID";
 
 type Step = "welcome" | "line" | "done";
 
-export default function SetupGuide({ trainer, isIndividual = false }: Props) {
+export default function SetupGuide({ trainer }: Props) {
   const [step, setStep] = useState<Step>("welcome");
   const [lineCode, setLineCode] = useState<string | null>(null);
   const [lineCodeExpiry, setLineCodeExpiry] = useState<Date | null>(null);
@@ -46,37 +45,6 @@ export default function SetupGuide({ trainer, isIndividual = false }: Props) {
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
-
-  // 個人プランはLINEステップなしでそのままダッシュボードへ
-  if (isIndividual) {
-    return (
-      <div className="space-y-5">
-        <Logo size="sm" variant="full" />
-        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm text-center space-y-4">
-          <p className="text-3xl">🎉</p>
-          <h1 className="text-lg font-black text-slate-800">{trainer.name} さん、<br />ようこそ！</h1>
-          <p className="text-sm text-slate-500">
-            あすけん・STRONG・タニタ等のスクショをAYF公式LINEに送るだけで自動記録されます。
-          </p>
-          <a
-            href={LINE_FRIEND_URL}
-            target="_blank"
-            rel="noreferrer"
-            className="flex items-center justify-center gap-2 w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3.5 rounded-2xl text-sm transition-colors"
-          >
-            <span>LINE公式を友達追加する →</span>
-          </a>
-          <button
-            type="button"
-            onClick={() => router.replace("/trainer")}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-2xl text-sm transition-colors"
-          >
-            ダッシュボードへ →
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-5">
@@ -110,7 +78,7 @@ export default function SetupGuide({ trainer, isIndividual = false }: Props) {
 
             <div className="space-y-3">
               {[
-                { step: "1", icon: "📱", title: "LINE通知を連携する", desc: "AYF公式LINEにコードを送るだけ。クライアントの記録が届いたら通知が来ます" },
+                { step: "1", icon: "📱", title: "LINE通知を連携する", desc: "Client Fit公式LINEにコードを送るだけ。クライアントの記録が届いたら通知が来ます" },
                 { step: "2", icon: "📨", title: "招待リンクが届く", desc: "連携完了と同時に、クライアントへの招待リンクがLINEで届きます。そのまま転送するだけ" },
               ].map(({ step: n, icon, title, desc }) => (
                 <div key={n} className="flex items-start gap-3">
@@ -140,7 +108,7 @@ export default function SetupGuide({ trainer, isIndividual = false }: Props) {
           <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-5">
             <div>
               <p className="text-xs text-blue-600 font-bold uppercase tracking-widest">Step 1</p>
-              <h2 className="text-base font-black text-slate-800 mt-0.5">AYF公式LINEに友達追加 & コードを送る</h2>
+              <h2 className="text-base font-black text-slate-800 mt-0.5">Client Fit公式LINEに友達追加 & コードを送る</h2>
               <p className="text-xs text-slate-500 mt-1">クライアントが記録を送ったとき、あなたのLINEに通知が届くようになります</p>
             </div>
 
@@ -151,7 +119,7 @@ export default function SetupGuide({ trainer, isIndividual = false }: Props) {
                   {[
                     "① 下の「コードを発行する」をタップ",
                     "② 表示されたコードをコピー",
-                    "③ AYF公式LINEを友達追加",
+                    "③ Client Fit公式LINEを友達追加",
                     "④ コードをLINEに送信 → 完了",
                   ].map((t, i) => (
                     <div key={i} className="flex items-center gap-3 text-xs text-slate-600">
@@ -183,7 +151,7 @@ export default function SetupGuide({ trainer, isIndividual = false }: Props) {
               <div className="space-y-4">
                 {/* コード表示 */}
                 <div className="bg-blue-50 border-2 border-blue-300 rounded-2xl p-5 text-center space-y-3">
-                  <p className="text-xs text-blue-600 font-bold">このコードをAYF公式LINEに送ってください</p>
+                  <p className="text-xs text-blue-600 font-bold">このコードをClient Fit公式LINEに送ってください</p>
                   <p className="text-5xl font-black tracking-[0.4em] text-blue-700 font-mono">{lineCode}</p>
                   {lineCodeExpiry && (
                     <p className="text-[10px] text-slate-400">
@@ -206,12 +174,12 @@ export default function SetupGuide({ trainer, isIndividual = false }: Props) {
                   rel="noreferrer"
                   className="flex items-center justify-center gap-2 w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3.5 rounded-xl text-sm transition-colors"
                 >
-                  📱 AYF公式LINEを友達追加する
+                  📱 Client Fit公式LINEを友達追加する
                 </a>
 
                 <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-xs text-amber-700 space-y-2">
                   <p className="font-bold">② LINEを確認してください</p>
-                  <p>AYF公式から「✅ LINE通知の連携が完了しました！」と返信が届いたら連携完了です。</p>
+                  <p>Client Fit公式から「✅ LINE通知の連携が完了しました！」と返信が届いたら連携完了です。</p>
                   <p className="text-amber-500">連携が確認できたら管理画面に進んでください👇</p>
                 </div>
 

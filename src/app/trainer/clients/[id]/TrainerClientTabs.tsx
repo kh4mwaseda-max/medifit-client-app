@@ -93,7 +93,7 @@ function LineMessageBox({ clientId, lineUserId, clientName }: { clientId: string
       <div className="flex items-center gap-2">
         <span className="text-base">💬</span>
         <p className="text-xs font-semibold text-slate-700">{clientName} さんにLINEで送る</p>
-        <span className="text-[10px] bg-green-50 text-green-600 border border-green-200 px-2 py-0.5 rounded-full">AllYourFit公式経由</span>
+        <span className="text-[10px] bg-green-50 text-green-600 border border-green-200 px-2 py-0.5 rounded-full">Client Fit公式経由</span>
       </div>
       <textarea
         value={msg}
@@ -143,7 +143,7 @@ export default function TrainerClientTabs({ client, bodyRecords, trainingSession
   );
   const [copied, setCopied] = useState(false);
 
-  const shareText = `【AllYourFit】${client.name} さん専用ダッシュボードのご案内
+  const shareText = `【Client Fit】${client.name} さん専用ダッシュボードのご案内
 
 ◆ ダッシュボードURL
 ${clientUrl}
@@ -187,7 +187,7 @@ ${LINE_FRIEND_URL}
           </div>
           <p className="text-xs text-blue-500 leading-relaxed pl-1">
             下の案内文をコピーしてLINE・メール等でそのまま送信してください。<br />
-            クライアントがPINをAYF公式LINEに送ると自動で連携されます。
+            クライアントがPINをClient Fit公式LINEに送ると自動で連携されます。
           </p>
         </div>
 
@@ -222,7 +222,7 @@ ${LINE_FRIEND_URL}
           rel="noreferrer"
           className="flex items-center justify-center gap-2 w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3.5 rounded-xl text-sm transition-colors shadow-sm"
         >
-          📱 AYF公式LINEを開く（転送用）
+          📱 Client Fit公式LINEを開く（転送用）
         </a>
 
         <p className="text-center text-[10px] text-slate-400 pb-4">
@@ -256,11 +256,11 @@ ${LINE_FRIEND_URL}
             <p className="text-sm font-bold text-slate-600">問診・基礎データ入力待ち</p>
           </div>
           <p className="text-xs text-slate-500 leading-relaxed">
-            {client.name} さんがAYF公式LINEに基礎情報（身長・体重・目標など）を送信すると、<br />
+            {client.name} さんがClient Fit公式LINEに基礎情報（身長・体重・目標など）を送信すると、<br />
             「アセスメント生成・目標設定」のステップに進めます。
           </p>
           <div className="bg-slate-50 rounded-xl px-4 py-3 text-xs text-slate-400 leading-relaxed">
-            クライアントに「AYF公式LINEにメッセージを送って基礎情報を登録してください」と案内してください。
+            クライアントに「Client Fit公式LINEにメッセージを送って基礎情報を登録してください」と案内してください。
           </div>
         </div>
 

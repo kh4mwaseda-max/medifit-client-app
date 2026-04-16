@@ -263,7 +263,7 @@ function LinePreviewModal({
               <div className="bg-white rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm">
                 <p className="text-xs text-slate-700 leading-relaxed whitespace-pre-wrap">{messageText}</p>
               </div>
-              <p className="text-[10px] text-white/70 mt-1 ml-1">AllYourFit</p>
+              <p className="text-[10px] text-white/70 mt-1 ml-1">Client Fit</p>
             </div>
           </div>
         </div>

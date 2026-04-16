@@ -5,7 +5,7 @@ import { cookies } from "next/headers";
 
 const anthropic = new Anthropic();
 
-// クライアント自身がアセスメントを生成するエンドポイント（個人プラン向け）
+// クライアントがアセスメントを生成するエンドポイント
 export async function POST(req: NextRequest) {
   const { clientId } = await req.json();
   if (!clientId) return NextResponse.json({ error: "clientId required" }, { status: 400 });
@@ -109,7 +109,7 @@ JSON以外のテキストは含めないでください。
     .insert({
       client_id: clientId,
       generated_at: new Date().toISOString(),
-      published_at: new Date().toISOString(), // 個人プランは生成即公開
+      published_at: new Date().toISOString(),
       ...parsed,
     })
     .select()
