@@ -23,7 +23,7 @@ export default function Home() {
       {/* ── ヒーロー ── */}
       <section className="flex flex-col items-center justify-center px-5 pt-20 pb-16 text-center max-w-2xl mx-auto w-full">
         <span className="text-[11px] font-bold text-blue-400 bg-blue-500/10 border border-blue-500/30 px-3 py-1 rounded-full tracking-widest uppercase mb-6">
-          ローンチ期間 — 無料で使える
+          パーソナルトレーナー向け · ローンチ期間 無料
         </span>
 
         <h1 className="text-3xl sm:text-4xl font-black leading-tight tracking-tight mb-5">
@@ -42,15 +42,29 @@ export default function Home() {
           ))}
         </div>
 
+        {/* ミニ実績バー */}
+        <div className="flex items-center justify-center gap-6 mb-10 flex-wrap">
+          {[
+            { val: "¥0", label: "エントリー費" },
+            { val: "30秒", label: "登録時間" },
+            { val: "6+", label: "対応アプリ" },
+          ].map(({ val, label }) => (
+            <div key={label} className="text-center">
+              <p className="text-xl font-black text-white">{val}</p>
+              <p className="text-[10px] text-slate-500">{label}</p>
+            </div>
+          ))}
+        </div>
+
         <div className="w-full max-w-sm">
           <Link
             href="/trainer/register"
-            className="flex items-center justify-center w-full bg-blue-500 hover:bg-blue-400 text-white font-bold py-4 px-5 rounded-2xl text-sm transition-colors"
+            className="flex items-center justify-center w-full bg-blue-500 hover:bg-blue-400 text-white font-bold py-4 px-5 rounded-2xl text-sm transition-colors shadow-lg shadow-blue-900/30"
           >
-            無料でトレーナー登録する →
+            今すぐ無料でトレーナー登録する →
           </Link>
         </div>
-        <p className="text-[10px] text-slate-600 mt-4">クレジットカード不要 · 30秒で登録完了</p>
+        <p className="text-[10px] text-slate-600 mt-4">クレジットカード不要 · 登録30秒 · いつでも解約可</p>
       </section>
 
       {/* ── 課題提示 ── */}
@@ -140,14 +154,95 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ── 競合比較 ── */}
+      <section className="px-5 py-14 border-t border-white/10">
+        <div className="max-w-2xl mx-auto">
+          <p className="text-center text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">比較</p>
+          <p className="text-center text-lg font-black text-white mb-8">他のツールとの違い</p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-white/10">
+                  <th className="text-left text-slate-400 font-medium pb-3 pr-4 w-2/5">機能</th>
+                  <th className="text-center pb-3 px-2 w-1/5">
+                    <span className="text-blue-400 font-black">Client Fit</span>
+                  </th>
+                  <th className="text-center pb-3 px-2 w-1/5 text-slate-500 font-medium">Gymz</th>
+                  <th className="text-center pb-3 px-2 w-1/5 text-slate-500 font-medium">Trainerize</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {[
+                  ["月額料金",               "¥0〜",    "¥3,000〜", "$19.99〜"],
+                  ["LINEスクショ自動解析",   "✓",       "✗",        "✗"       ],
+                  ["食事×体重相関分析",      "✓",       "✗",        "✗"       ],
+                  ["翌朝サマリー自動配信",   "✓",       "✗",        "△"       ],
+                  ["日本語対応",             "✓",       "△",        "✗"       ],
+                  ["クライアント招待リンク", "✓",       "✓",        "✓"       ],
+                  ["AIレポート生成",         "✓",       "✗",        "△"       ],
+                ].map(([feat, cf, gymz, trainerize]) => (
+                  <tr key={feat}>
+                    <td className="py-3 pr-4 text-slate-400">{feat}</td>
+                    <td className="py-3 px-2 text-center font-bold text-blue-400">{cf}</td>
+                    <td className="py-3 px-2 text-center text-slate-500">{gymz}</td>
+                    <td className="py-3 px-2 text-center text-slate-500">{trainerize}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      {/* ── よくある質問 ── */}
+      <section className="px-5 py-14 border-t border-white/10">
+        <div className="max-w-2xl mx-auto">
+          <p className="text-center text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">FAQ</p>
+          <p className="text-center text-lg font-black text-white mb-8">よくある質問</p>
+          <div className="space-y-3">
+            {[
+              {
+                q: "本当に無料ですか？",
+                a: "エントリープランは無料です。クレジットカード不要で今すぐ始められます。将来的に追加機能（AI高度分析など）を有料化する予定ですが、基本のクライアント管理機能は無料で使い続けられます。",
+              },
+              {
+                q: "クライアントはどんなアプリのスクショを送ればいいですか？",
+                a: "あすけん・筋トレMemo・STRONG・FiNC・カロミル・タニタ体組成計アプリなど主要アプリに対応しています。クライアントが現在使っているアプリをそのまま使えるので、乗り換えは不要です。",
+              },
+              {
+                q: "LINEのアカウントは必要ですか？",
+                a: "クライアントのスクショ受け取りにLINE公式アカウントを使います。トレーナー側のLINEはサマリー通知の受け取りに任意で連携できます（設定画面から）。",
+              },
+              {
+                q: "データはどこに保存されますか？",
+                a: "Supabase（PostgreSQL）で安全に管理しています。データはトレーナーとそのクライアントのみ閲覧可能です。",
+              },
+              {
+                q: "副業トレーナーでも使えますか？",
+                a: "むしろ副業・個人トレーナーに最も向いています。月額コストを抑えながら、大手ジムと同等以上のデータ管理ができます。",
+              },
+            ].map(({ q, a }) => (
+              <details key={q} className="bg-white/5 border border-white/10 rounded-2xl group">
+                <summary className="px-5 py-4 text-sm font-medium text-white cursor-pointer list-none flex items-center justify-between">
+                  {q}
+                  <span className="text-slate-400 text-lg leading-none select-none group-open:rotate-45 transition-transform">+</span>
+                </summary>
+                <p className="px-5 pb-4 text-xs text-slate-400 leading-relaxed">{a}</p>
+              </details>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ── CTA ── */}
       <section className="px-5 py-16 border-t border-white/10">
         <div className="max-w-sm mx-auto text-center space-y-5">
-          <h2 className="text-xl font-black text-white">クライアント管理を、もっと簡単に</h2>
-          <p className="text-xs text-slate-500">クレジットカード不要。30秒で登録完了。</p>
+          <h2 className="text-xl font-black text-white">今日から、クライアント管理を変える</h2>
+          <p className="text-slate-500 text-xs leading-relaxed">登録30秒・クレジットカード不要・いつでも解約可</p>
           <Link href="/trainer/register" className="block w-full bg-blue-500 hover:bg-blue-400 text-white font-bold py-4 rounded-2xl text-sm transition-colors">
-            無料でトレーナー登録する →
+            今すぐ無料でトレーナー登録する →
           </Link>
+          <p className="text-[10px] text-slate-600">すでに登録済みの方は <Link href="/trainer/login" className="text-slate-400 hover:text-white underline underline-offset-2">ログイン</Link></p>
         </div>
       </section>
 

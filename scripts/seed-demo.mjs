@@ -3,9 +3,22 @@
 // 実行: node scripts/seed-demo.mjs
 
 import { createClient } from "@supabase/supabase-js";
+import { readFileSync } from "fs";
+import { resolve, dirname } from "path";
+import { fileURLToPath } from "url";
 
-const SUPABASE_URL = "https://cpjskwdsznfupicsqbpy.supabase.co";
-const SUPABASE_SERVICE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNwanNrd2Rzem5mdXBpY3NxYnB5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTQ1MTEwMiwiZXhwIjoyMDkxMDI3MTAyfQ.GFpdK43tiyYb5ucDNK9KDGhmSz2tkJUGMlr3JQ4AChw";
+// .env.local から環境変数を読み込む
+const __dir = dirname(fileURLToPath(import.meta.url));
+try {
+  const env = readFileSync(resolve(__dir, "../.env.local"), "utf8");
+  for (const line of env.split("\n")) {
+    const m = line.match(/^([A-Z_]+)=(.+)$/);
+    if (m) process.env[m[1]] = m[2].trim();
+  }
+} catch { /* .env.local がなければスキップ */ }
+
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "https://cpjskwdsznfupicsqbpy.supabase.co";
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
 const CLIENT_ID = "309a5ad3-d7f2-4ba5-99dd-a95a6e6b00cd";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
@@ -163,7 +176,7 @@ async function seed() {
     if (setsErr) { console.error("sets error:", setsErr.message); }
   }
 
-  console.log("✅ 完了！ https://allyourfit.com/demo で確認してください");
+  console.log("✅ 完了！ http://localhost:3000/demo で確認してください");
 }
 
 seed().catch(console.error);

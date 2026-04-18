@@ -204,6 +204,22 @@ export default function TrainerSettingsForm({ trainer, justUpgraded }: Props) {
           </div>
         ) : lineCode ? (
           <div className="space-y-3">
+            {/* ステップインジケーター */}
+            <div className="flex items-center gap-1.5">
+              {[
+                { n: "1", label: "友達追加", done: false },
+                { n: "2", label: "コード送信", done: false },
+                { n: "3", label: "連携完了", done: false },
+              ].map((step, i) => (
+                <div key={i} className="flex items-center gap-1.5">
+                  <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold ${i === 1 ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-400"}`}>
+                    {step.n}
+                  </div>
+                  <span className={`text-[10px] ${i === 1 ? "text-blue-600 font-semibold" : "text-slate-400"}`}>{step.label}</span>
+                  {i < 2 && <span className="text-slate-200 text-xs">›</span>}
+                </div>
+              ))}
+            </div>
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-center">
               <p className="text-xs text-slate-400 mb-2">Client Fit LINEにこのコードを送ってください</p>
               <p className="text-3xl font-black tracking-[0.3em] text-slate-800 font-mono">{lineCode}</p>
@@ -212,10 +228,16 @@ export default function TrainerSettingsForm({ trainer, justUpgraded }: Props) {
               </p>
             </div>
             <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 space-y-1.5">
-              <p className="text-xs font-bold text-blue-700">手順</p>
-              <p className="text-xs text-blue-600">1. Client Fit LINE公式を友達追加</p>
-              <p className="text-xs text-blue-600">2. 上の6桁コードをそのままLINEに送信</p>
-              <p className="text-xs text-blue-600">3. 「連携しました」が届いたら完了</p>
+              {[
+                "Client Fit LINE公式を友達追加",
+                "上の6桁コードをそのままLINEに送信",
+                "「連携しました」が届いたら完了",
+              ].map((text, i) => (
+                <div key={i} className="flex items-start gap-2">
+                  <span className="w-4 h-4 rounded-full bg-blue-200 text-blue-700 text-[9px] font-bold flex items-center justify-center flex-none mt-0.5">{i + 1}</span>
+                  <p className="text-xs text-blue-600">{text}</p>
+                </div>
+              ))}
             </div>
           </div>
         ) : (

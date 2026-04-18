@@ -160,7 +160,7 @@ export async function GET(req: NextRequest) {
     }
 
     lines.push(``);
-    lines.push(`🔗 https://allyourfit.com/trainer`);
+    lines.push(`🔗 ${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/trainer`);
 
     const messageText = lines.join("\n");
 

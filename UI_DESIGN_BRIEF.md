@@ -1,4 +1,4 @@
-# AYF UI設計指示書 v2（コードレビュー後・修正版）
+# Client Fit UI設計指示書 v2（コードレビュー後・修正版）
 > 担当: Mio（UIデザイン・UXリサーチ）
 > 宛先: 佐藤（実装担当）
 > 日付: 2026-04-12
@@ -295,7 +295,7 @@ AIが食事×トレーニング×睡眠の相関を分析します。</p>
 
   <span className="text-2xl text-slate-600">→</span>
 
-  {/* After: AYFダッシュボードのミニプレビュー */}
+  {/* After: Client Fitダッシュボードのミニプレビュー */}
   <div className="bg-white rounded-2xl p-3 shadow-lg w-40">
     <p className="text-[10px] text-slate-400 mb-2">統合ダッシュボード</p>
     <div className="space-y-1">
@@ -333,7 +333,7 @@ DB変更:
 API追加:
   POST /api/trainer/invite
     → invite_token = nanoid(12) を生成してDBに保存
-    → { url: "https://allyourfit.com/join/[token]" } を返す
+    → { url: "https://[本番ドメイン]/join/[token]" } を返す
 
 新ページ追加:
   /join/[token]/page.tsx

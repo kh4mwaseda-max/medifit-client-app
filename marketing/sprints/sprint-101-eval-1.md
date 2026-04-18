@@ -16,7 +16,7 @@
 | content-competitive.md | 119行 | ✅ | 「空白あり」の明確な判定。YouTube/note/X の3媒体を調査。差別化余地まで言及あり |
 | popular-apps.md | 104行 | ✅ | 食事・筋トレアプリのランキング調査。具体的アプリ名で記載 |
 | research-1-competitive-analysis.md | 55行 | ✅ | あすけん・FiNC・STRONG・Fiton の比較。各サービスの限界を指摘 |
-| research-2-target-online-map.md | 82行 | ✅ | ハッシュタグ・SNSチャネル別の居場所マップ。AYFの刺さり評価まで記載 |
+| research-2-target-online-map.md | 82行 | ✅ | ハッシュタグ・SNSチャネル別の居場所マップ。CFの刺さり評価まで記載 |
 | research-3-line-marketing.md | 125行 | ✅ | フィットネス系LINE活用事例。ステップ配信のベストプラクティス記載 |
 
 ---
@@ -25,7 +25,7 @@
 
 ### content-competitive.md の「空白あり」判定について
 「競合なし」という強い結論だが、調査キーワードが日本語に限定されている。  
-英語圏のコンテンツが参入してくるリスクは考慮外。ただし日本市場に絞ったAYFの方針上、許容範囲。
+英語圏のコンテンツが参入してくるリスクは考慮外。ただし日本市場に絞ったCFの方針上、許容範囲。
 
 ### research-1-competitive-analysis.md（55行）が他より短い
 競合マトリクスとしては最低限の内容。Kiraへ追加調査を依頼する場合は  

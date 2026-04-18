@@ -24,6 +24,6 @@ WHERE id = '3072f02e-d70e-4e3a-a67b-55e88981351c';
 
 -- email がまだ設定されていない場合に備えて
 UPDATE trainers
-SET email = 'masaya@allyourfit.com'
+SET email = 'kh4mwaseda@gmail.com'
 WHERE id = '3072f02e-d70e-4e3a-a67b-55e88981351c'
   AND (email IS NULL OR email = '');

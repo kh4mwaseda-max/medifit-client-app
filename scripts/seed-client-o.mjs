@@ -3,9 +3,22 @@
  * node scripts/seed-client-o.mjs
  */
 import { createClient } from "@supabase/supabase-js";
+import { readFileSync } from "fs";
+import { resolve, dirname } from "path";
+import { fileURLToPath } from "url";
 
-const SUPABASE_URL = "https://cpjskwdsznfupicsqbpy.supabase.co";
-const SERVICE_KEY  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNwanNrd2Rzem5mdXBpY3NxYnB5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTQ1MTEwMiwiZXhwIjoyMDkxMDI3MTAyfQ.GFpdK43tiyYb5ucDNK9KDGhmSz2tkJUGMlr3JQ4AChw";
+// .env.local から環境変数を読み込む
+const __dir = dirname(fileURLToPath(import.meta.url));
+try {
+  const env = readFileSync(resolve(__dir, "../.env.local"), "utf8");
+  for (const line of env.split("\n")) {
+    const m = line.match(/^([A-Z_]+)=(.+)$/);
+    if (m) process.env[m[1]] = m[2].trim();
+  }
+} catch { /* .env.local がなければスキップ */ }
+
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "https://cpjskwdsznfupicsqbpy.supabase.co";
+const SERVICE_KEY  = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
 const CLIENT_ID    = "19d81742-4039-4859-aa82-a7380017ba0e";
 
 const sb = createClient(SUPABASE_URL, SERVICE_KEY);
@@ -158,5 +171,5 @@ if (goalErr) console.error("client_goals error:", goalErr.message);
 else console.log("✅ client goals inserted");
 
 console.log("\n🎉 デモデータ投入完了！");
-console.log(`クライアントURL: https://allyourfit.com/client/${CLIENT_ID}`);
+console.log(`クライアントURL: http://localhost:3000/client/${CLIENT_ID}`);
 console.log(`PIN: 1234`);

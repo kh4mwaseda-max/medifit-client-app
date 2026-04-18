@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>Client Fit アイコン生成</title>
+<style>
+  body { font-family: system-ui; background: #0a0f1e; color: #fff; padding: 40px; }
+  h1 { font-size: 24px; margin-bottom: 8px; }
+  p { color: #64748b; font-size: 14px; margin-bottom: 32px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 24px; }
+  .card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 24px; text-align: center; }
+  .card canvas { border-radius: 12px; margin-bottom: 12px; }
+  .card .label { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+  .card .size { font-size: 11px; color: #64748b; margin-bottom: 12px; }
+  .card button { background: #3b82f6; color: #fff; border: none; padding: 8px 16px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; }
+  .card button:hover { background: #2563eb; }
+</style>
+</head>
+<body>
+<h1>Client Fit アイコン生成ツール</h1>
+<p>各アイコンの「ダウンロード」ボタンを押してPNGを保存してください。<br>LINE用アイコン（640x640）も含まれています。</p>
+<div class="grid" id="grid"></div>
+
+<script>
+const SIZES = [
+  { name: "favicon", w: 32, h: 32, file: "favicon.png" },
+  { name: "icon-192", w: 192, h: 192, file: "icon-192.png" },
+  { name: "icon-512", w: 512, h: 512, file: "icon.png" },
+  { name: "apple-touch-icon", w: 180, h: 180, file: "apple-touch-icon.png" },
+  { name: "LINE プロフィール", w: 640, h: 640, file: "line-icon-640.png" },
+  { name: "OGP画像", w: 1200, h: 630, file: "og-image.png", isOg: true },
+];
+
+function drawLogoMark(ctx, size) {
+  const s = size / 100;
+
+  // Background gradient
+  const grad = ctx.createLinearGradient(0, 0, size, size);
+  grad.addColorStop(0, "#3b82f6");
+  grad.addColorStop(1, "#0ea5e9");
+
+  // Rounded rect
+  const r = 20 * s;
+  ctx.beginPath();
+  ctx.roundRect(0, 0, size, size, r);
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // Person silhouette
+  ctx.fillStyle = "rgba(255,255,255,0.95)";
+  ctx.strokeStyle = "rgba(255,255,255,0.95)";
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+
+  // Head
+  ctx.beginPath();
+  ctx.arc(50*s, 22*s, 9*s, 0, Math.PI*2);
+  ctx.fill();
+
+  // Body
+  ctx.beginPath();
+  ctx.roundRect(44*s, 33*s, 12*s, 22*s, 4*s);
+  ctx.fill();
+
+  // Arms
+  ctx.lineWidth = 7*s;
+  ctx.beginPath(); ctx.moveTo(44*s, 38*s); ctx.lineTo(28*s, 22*s); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(56*s, 38*s); ctx.lineTo(72*s, 22*s); ctx.stroke();
+
+  // Legs
+  ctx.beginPath(); ctx.moveTo(47*s, 54*s); ctx.lineTo(40*s, 75*s); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(53*s, 54*s); ctx.lineTo(60*s, 75*s); ctx.stroke();
+
+  // Heartbeat line
+  const lineGrad = ctx.createLinearGradient(0, 0, size, 0);
+  lineGrad.addColorStop(0, "rgba(255,255,255,0.5)");
+  lineGrad.addColorStop(1, "rgba(255,255,255,1)");
+  ctx.strokeStyle = lineGrad;
+  ctx.lineWidth = 3.5*s;
+  ctx.beginPath();
+  ctx.moveTo(8*s, 84*s);
+  ctx.lineTo(22*s, 84*s); ctx.lineTo(28*s, 72*s); ctx.lineTo(34*s, 94*s);
+  ctx.lineTo(40*s, 78*s); ctx.lineTo(46*s, 84*s); ctx.lineTo(54*s, 84*s);
+  ctx.lineTo(60*s, 76*s); ctx.lineTo(66*s, 90*s); ctx.lineTo(72*s, 84*s);
+  ctx.lineTo(92*s, 84*s);
+  ctx.stroke();
+}
+
+function drawOgImage(ctx) {
+  // Dark background
+  ctx.fillStyle = "#0a0f1e";
+  ctx.fillRect(0, 0, 1200, 630);
+
+  // Logo mark at left-center
+  ctx.save();
+  ctx.translate(100, 200);
+  drawLogoMark(ctx, 100);
+  ctx.restore();
+
+  // Brand name
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "900 48px system-ui, -apple-system, sans-serif";
+  ctx.fillText("Client Fit", 220, 250);
+
+  // Subtitle
+  ctx.fillStyle = "#94a3b8";
+  ctx.font = "500 14px system-ui, -apple-system, sans-serif";
+  ctx.letterSpacing = "3px";
+  ctx.fillText("CLIENT MANAGEMENT FOR TRAINERS", 222, 275);
+
+  // Tagline
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "800 32px system-ui, -apple-system, sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText("クライアントの食事もトレーニングも、", 600, 390);
+  ctx.fillStyle = "#60a5fa";
+  ctx.fillText("ひとつの画面で管理する。", 600, 435);
+
+  // Sub
+  ctx.fillStyle = "#64748b";
+  ctx.font = "400 16px system-ui, -apple-system, sans-serif";
+  ctx.fillText("スクショをLINEに送るだけ。AIが自動解析してダッシュボードに反映。", 600, 480);
+
+  // Badge
+  ctx.fillStyle = "rgba(59,130,246,0.15)";
+  ctx.strokeStyle = "rgba(59,130,246,0.3)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.roundRect(470, 510, 260, 40, 20);
+  ctx.fill(); ctx.stroke();
+  ctx.fillStyle = "#60a5fa";
+  ctx.font = "700 15px system-ui, -apple-system, sans-serif";
+  ctx.fillText("エントリー無料で始める", 600, 536);
+
+  // Footer
+  ctx.fillStyle = "#334155";
+  ctx.font = "400 11px system-ui, -apple-system, sans-serif";
+  ctx.fillText("© 2026 Client Fit · 合同会社みらいど", 600, 600);
+  ctx.textAlign = "start";
+}
+
+const grid = document.getElementById("grid");
+
+SIZES.forEach(({ name, w, h, file, isOg }) => {
+  const card = document.createElement("div");
+  card.className = "card";
+
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const displayW = Math.min(w, 160);
+  const displayH = Math.round(h * (displayW / w));
+  canvas.style.width = displayW + "px";
+  canvas.style.height = displayH + "px";
+
+  const ctx = canvas.getContext("2d");
+  if (isOg) {
+    drawOgImage(ctx);
+  } else {
+    drawLogoMark(ctx, w);
+  }
+
+  const label = document.createElement("div");
+  label.className = "label";
+  label.textContent = name;
+
+  const size = document.createElement("div");
+  size.className = "size";
+  size.textContent = `${w}x${h}px — ${file}`;
+
+  const btn = document.createElement("button");
+  btn.textContent = "ダウンロード";
+  btn.onclick = () => {
+    const a = document.createElement("a");
+    a.download = file;
+    a.href = canvas.toDataURL("image/png");
+    a.click();
+  };
+
+  card.append(canvas, label, size, btn);
+  grid.append(card);
+});
+</script>
+</body>
+</html>

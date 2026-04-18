@@ -57,6 +57,14 @@ export default async function TrainerDashboard() {
     }
   }
 
+  // 最終活動からの経過日数
+  const today_str = new Date().toISOString().split("T")[0];
+  const daysSinceActivity = (clientId: string, startDate: string) => {
+    const last = lastActivityMap[clientId] ?? startDate ?? today_str;
+    const lastDate = last.slice(0, 10);
+    return Math.floor((new Date(today_str).getTime() - new Date(lastDate).getTime()) / (1000 * 60 * 60 * 24));
+  };
+
   // 要対応（問診完了・プラン未送信）を上に、それ以外は最終活動日順
   const urgent = allClients.filter((c) => c.onboarding_step === "intake_done");
   const others = allClients
@@ -101,6 +109,28 @@ export default async function TrainerDashboard() {
       </header>
 
       <main className="max-w-2xl mx-auto px-4 py-6 space-y-5">
+
+        {/* ── クイックスタッツ ── */}
+        {allClients.length > 0 && !focusOnUrgent && (
+          <div className="grid grid-cols-3 gap-3">
+            <div className="bg-white border border-slate-200 rounded-2xl p-3 text-center shadow-sm">
+              <p className="text-2xl font-black text-slate-800 tabular-nums">{allClients.length}</p>
+              <p className="text-[10px] text-slate-400 mt-0.5">担当クライアント</p>
+            </div>
+            <div className="bg-white border border-slate-200 rounded-2xl p-3 text-center shadow-sm">
+              <p className="text-2xl font-black text-teal-600 tabular-nums">
+                {others.filter(c => daysSinceActivity(c.id, c.start_date) <= 1).length}
+              </p>
+              <p className="text-[10px] text-slate-400 mt-0.5">直近24h活動</p>
+            </div>
+            <div className="bg-white border border-slate-200 rounded-2xl p-3 text-center shadow-sm">
+              <p className="text-2xl font-black text-rose-400 tabular-nums">
+                {others.filter(c => daysSinceActivity(c.id, c.start_date) >= 7).length}
+              </p>
+              <p className="text-[10px] text-slate-400 mt-0.5">要フォロー</p>
+            </div>
+          </div>
+        )}
 
         {/* ── 朝サマリー案内 ── */}
         {!focusOnUrgent && others.length > 0 && (
@@ -195,16 +225,32 @@ export default async function TrainerDashboard() {
           </div>
         ) : (
           <div className="space-y-2.5">
-            {others.map((c) => (
+            {others.map((c) => {
+              const days = daysSinceActivity(c.id, c.start_date);
+              const activityStatus =
+                days <= 1 ? { dot: "bg-teal-400", badge: null } :
+                days <= 3 ? { dot: "bg-amber-400", badge: null } :
+                days <= 7 ? { dot: "bg-orange-400", badge: { label: `${days}日間未記録`, cls: "bg-orange-50 text-orange-500 border-orange-200" } } :
+                            { dot: "bg-rose-400",   badge: { label: `${days}日間未記録`, cls: "bg-rose-50 text-rose-500 border-rose-200" } };
+
+              return (
               <Link
                 key={c.id}
                 href={`/trainer/clients/${c.id}`}
                 className="flex items-center justify-between bg-white border border-slate-200 rounded-2xl p-4 hover:border-blue-200 hover:shadow-md hover:shadow-blue-50 transition-all shadow-sm"
               >
                 <div className="flex items-center gap-3">
-                  <div className={`w-2 h-2 rounded-full flex-none ${c.line_user_id ? "bg-teal-400" : "bg-slate-200"}`} />
+                  <div className={`w-2 h-2 rounded-full flex-none ${activityStatus.dot}`} />
                   <div>
-                    <p className="text-slate-800 font-medium text-sm">{c.name}</p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-slate-800 font-medium text-sm">{c.name}</p>
+                      {!c.line_user_id && (
+                        <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-400 border border-slate-200">LINE未連携</span>
+                      )}
+                      {activityStatus.badge && (
+                        <span className={`text-[9px] px-1.5 py-0.5 rounded-full border font-medium ${activityStatus.badge.cls}`}>{activityStatus.badge.label}</span>
+                      )}
+                    </div>
                     {c.goal && <p className="text-xs text-slate-400 mt-0.5 line-clamp-1">{c.goal}</p>}
                   </div>
                 </div>
@@ -222,7 +268,8 @@ export default async function TrainerDashboard() {
                   )}
                 </div>
               </Link>
-            ))}
+              );
+            })}
           </div>
         )}
 

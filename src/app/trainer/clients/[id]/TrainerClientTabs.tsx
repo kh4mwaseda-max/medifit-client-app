@@ -135,6 +135,43 @@ interface Props {
   clientUrl: string;
 }
 
+const PHASE_STEPS = [
+  { phase: 1, label: "LINE連携", icon: "📱" },
+  { phase: 2, label: "問診", icon: "📋" },
+  { phase: 3, label: "目標設定", icon: "🎯" },
+  { phase: 4, label: "稼働中", icon: "✅" },
+] as const;
+
+function PhaseProgress({ phase }: { phase: Phase }) {
+  return (
+    <div className="bg-white border border-slate-200 rounded-2xl px-4 py-3 shadow-sm">
+      <div className="flex items-center">
+        {PHASE_STEPS.map((step, i) => {
+          const done = phase > step.phase;
+          const active = phase === step.phase;
+          return (
+            <div key={step.phase} className="flex items-center flex-1">
+              <div className="flex flex-col items-center flex-none">
+                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-sm transition-colors ${
+                  done ? "bg-teal-500 text-white" : active ? "bg-blue-600 text-white ring-2 ring-blue-300" : "bg-slate-100 text-slate-400"
+                }`}>
+                  {done ? "✓" : step.icon}
+                </div>
+                <p className={`text-[9px] mt-1 font-medium ${active ? "text-blue-600" : done ? "text-teal-500" : "text-slate-400"}`}>
+                  {step.label}
+                </p>
+              </div>
+              {i < PHASE_STEPS.length - 1 && (
+                <div className={`flex-1 h-0.5 mx-1 mb-4 ${done ? "bg-teal-300" : "bg-slate-100"}`} />
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function TrainerClientTabs({ client, bodyRecords, trainingSessions, assessments, goals, clientUrl }: Props) {
   const phase = getPhase(client, goals);
   // 初回（目標未送信）は「目標設定」、送信済みなら「身体記録」（=データダッシュボード）を初期表示
@@ -179,6 +216,7 @@ ${LINE_FRIEND_URL}
   if (phase === 1) {
     return (
       <div className="space-y-4">
+        <PhaseProgress phase={phase} />
         {/* ガイド */}
         <div className="bg-blue-50 border border-blue-200 rounded-2xl p-5 space-y-3">
           <div className="flex items-center gap-2.5">
@@ -238,6 +276,7 @@ ${LINE_FRIEND_URL}
   if (phase === 2) {
     return (
       <div className="space-y-4">
+        <PhaseProgress phase={phase} />
         {/* 連携完了 */}
         <div className="bg-teal-50 border border-teal-200 rounded-2xl p-5">
           <div className="flex items-center gap-3">
@@ -276,6 +315,7 @@ ${LINE_FRIEND_URL}
   if (phase === 3) {
     return (
       <div className="space-y-5">
+        <PhaseProgress phase={phase} />
         {/* バナー */}
         <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl px-5 py-4 flex items-start gap-3">
           <span className="text-2xl flex-none">🎯</span>
@@ -340,6 +380,8 @@ ${LINE_FRIEND_URL}
   // ────────────────────────────────────────────
   return (
     <div>
+      <PhaseProgress phase={phase} />
+      <div className="mt-4" />
       {/* レポートリンク */}
       <Link
         href={`/trainer/clients/${client.id}/report`}

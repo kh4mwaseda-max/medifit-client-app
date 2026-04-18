@@ -69,6 +69,20 @@ export default function TrainerRegister() {
           </form>
         </div>
 
+        {/* 安心バッジ */}
+        <div className="space-y-2">
+          {[
+            { icon: "✓", text: "クレジットカード不要・完全無料で始められる" },
+            { icon: "✓", text: "クライアントがLINEにスクショを送るだけで自動記録" },
+            { icon: "✓", text: "翌朝、全クライアントのサマリーがLINEに届く" },
+          ].map(({ icon, text }) => (
+            <div key={text} className="flex items-center gap-2 text-xs text-slate-500">
+              <span className="text-teal-500 font-bold flex-none">{icon}</span>
+              <span>{text}</span>
+            </div>
+          ))}
+        </div>
+
         <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-center">
           <p className="text-[10px] text-slate-500">
             ログインはClient Fit公式LINEに「ログイン」と送るだけ。<br />パスワード不要でワンタイムリンクが届きます。

@@ -6,10 +6,10 @@
 
 ---
 
-あなたはAYF（All Your Fit）のリサーチ担当AIエージェント・Kiraです。
+あなたはCF（Client Fit）のリサーチ担当AIエージェント・Kiraです。
 マーケ担当の橘凜からリサーチ依頼が来ています。
 
-AYFは「スクショを送るだけで、なぜ？を教えてくれる統合フィットネスダッシュボード」です。
+CFは「スクショを送るだけで、なぜ？を教えてくれる統合フィットネスダッシュボード」です。
 あすけん・STRONG等の個別アプリでは出せない「食事×トレーニング×体重の相関分析」が差別化軸です。
 
 `PersonalTrainer/product/allyourfit/marketing/requests/to-kira.md` を読んで、

@@ -1,0 +1,49 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="630" fill="#0a0f1e"/>
+
+  <!-- Logo mark -->
+  <defs>
+    <linearGradient id="og-bg" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#0ea5e9"/>
+    </linearGradient>
+    <linearGradient id="og-line" x1="0" y1="0" x2="80" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.5"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="1"/>
+    </linearGradient>
+    <clipPath id="og-clip">
+      <rect x="460" y="140" width="80" height="80" rx="16" ry="16"/>
+    </clipPath>
+  </defs>
+
+  <!-- Icon -->
+  <g transform="translate(460, 140) scale(0.8)">
+    <rect width="100" height="100" rx="20" ry="20" fill="url(#og-bg)"/>
+    <circle cx="50" cy="22" r="9" fill="white" fill-opacity="0.95"/>
+    <rect x="44" y="33" width="12" height="22" rx="4" fill="white" fill-opacity="0.95"/>
+    <path d="M44 38 L28 22" stroke="white" stroke-width="7" stroke-linecap="round" stroke-opacity="0.95"/>
+    <path d="M56 38 L72 22" stroke="white" stroke-width="7" stroke-linecap="round" stroke-opacity="0.95"/>
+    <path d="M47 54 L40 75" stroke="white" stroke-width="7" stroke-linecap="round" stroke-opacity="0.95"/>
+    <path d="M53 54 L60 75" stroke="white" stroke-width="7" stroke-linecap="round" stroke-opacity="0.95"/>
+    <path d="M8 84 L22 84 L28 72 L34 94 L40 78 L46 84 L54 84 L60 76 L66 90 L72 84 L92 84"
+      stroke="url(#og-line)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  </g>
+
+  <!-- Text -->
+  <text x="560" y="190" font-family="system-ui, -apple-system, sans-serif" font-size="40" font-weight="900" fill="white" text-anchor="start">Client Fit</text>
+  <text x="560" y="215" font-family="system-ui, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#94a3b8" letter-spacing="3" text-anchor="start">CLIENT MANAGEMENT FOR TRAINERS</text>
+
+  <!-- Tagline -->
+  <text x="600" y="340" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="800" fill="white" text-anchor="middle">クライアントの食事もトレーニングも、</text>
+  <text x="600" y="380" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="800" fill="#60a5fa" text-anchor="middle">ひとつの画面で管理する。</text>
+
+  <!-- Sub -->
+  <text x="600" y="430" font-family="system-ui, -apple-system, sans-serif" font-size="14" fill="#64748b" text-anchor="middle">スクショをLINEに送るだけ。AIが自動解析してダッシュボードに反映。</text>
+
+  <!-- Badge -->
+  <rect x="490" y="470" width="220" height="36" rx="18" fill="#3b82f6" fill-opacity="0.15" stroke="#3b82f6" stroke-opacity="0.3"/>
+  <text x="600" y="494" font-family="system-ui, -apple-system, sans-serif" font-size="13" font-weight="700" fill="#60a5fa" text-anchor="middle">エントリー無料で始める</text>
+
+  <!-- Footer -->
+  <text x="600" y="590" font-family="system-ui, -apple-system, sans-serif" font-size="10" fill="#334155" text-anchor="middle">© 2026 Client Fit · 合同会社みらいど</text>
+</svg>

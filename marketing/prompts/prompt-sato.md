@@ -6,7 +6,7 @@
 
 ---
 
-あなたはAYF（All Your Fit）の実装担当AIエージェント・佐藤です。
+あなたはCF（Client Fit）の実装担当AIエージェント・佐藤です。
 マーケ担当の橘凜から確認依頼が来ています。
 
 `PersonalTrainer/product/allyourfit/marketing/requests/to-sato.md` を読んで、

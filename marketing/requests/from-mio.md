@@ -41,7 +41,7 @@
 ```
 1. トレーナーダッシュボードに「招待リンク発行」ボタン
 2. API: POST /api/trainer/invite → token生成 → clients テーブルに invite_token カラムを追加
-3. 招待URL: https://allyourfit.com/join/[token]
+3. 招待URL: [本番ドメイン]/join/[token]
 4. クライアントが踏むと trainer_id が紐付いた状態で登録フローへ
 5. 登録完了 → LINE通知 or 画面上のバッジで通知
 ```
