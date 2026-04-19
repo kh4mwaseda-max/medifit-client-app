@@ -1,4 +1,5 @@
 {
+  "ignoreCommand": "git diff HEAD^ HEAD --quiet -- PersonalTrainer/product/allyourfit/",
   "crons": [
     {
       "path": "/api/cron/daily-summary",
