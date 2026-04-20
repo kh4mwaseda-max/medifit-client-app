@@ -36,7 +36,7 @@
 
 **場所**: https://developers.line.biz/console/
 
-1. 既存 Client Fit チャネル（または AYF から流用するチャネル）を開く
+1. 既存 Client Fit チャネルを開く（新規作成でも可）
 2. **Messaging API** タブで以下をコピー:
    - Channel access token（long-lived）
    - Channel secret

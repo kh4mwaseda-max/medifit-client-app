@@ -23,7 +23,7 @@
 ## 依頼3: グラフSNSシェア機能 ✅
 - `src/components/ShareButton.tsx` — 新規コンポーネント
   - html2canvas でグラフをPNG化
-  - AYFウォーターマーク自動付与（右下）
+  - Client Fitウォーターマーク自動付与（右下）
   - モバイル: Web Share API（ファイル共有）
   - デスクトップ: PNG自動DL + X（Twitter）インテントURL
 - 配置場所:
@@ -32,7 +32,7 @@
 
 ## おまけ: 紹介バナー ✅
 - ClientDashboard最下部に「友達に紹介する」バナーを追加
-- ワンタップでAYF招待文 + URLをクリップボードコピー
+- ワンタップでClient Fit招待文 + URLをクリップボードコピー
 
 ビルド確認済みです。
 

@@ -16,7 +16,7 @@
 - [x] グラフSNSシェア機能
 - [x] 課金UI（BILLING_ENABLED=falseで非表示）
 - [x] 個人プラン関連コード削除
-- [x] AllYourFit → Client Fit ブランド名全置換
+- [x] Client Fit ブランド名統一
 - [x] ドキュメント全更新（FEATURES.md / CLAUDE.md / RELEASE.md）
 - [x] note記事改訂（トレーナー向け）
 - [x] ビルド成功確認
@@ -27,7 +27,7 @@
 
 - [x] LINE月150枚制限の警告通知実装
 - [x] ビルド・型チェック 全通過確認（2026-04-20）
-- [x] 不要ファイル整理（fix.py削除・marketing/README.md追加で旧AYF期明記・旧ブランド残存を修正）
+- [x] 不要ファイル整理（fix.py削除・marketing/README.md追加・旧ブランド残存を全置換）
 - [x] 稲川さん向け手順書最終化（OWNER_ACTIONS.md 新規作成）
 - [ ] ローカル全フロー動作確認（稲川さん実機検証時に伴走）
 

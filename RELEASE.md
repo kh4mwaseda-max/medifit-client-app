@@ -7,7 +7,7 @@
 
 ## 概要
 
-Client Fit（旧AYF）をリリースするために必要な手順をまとめたもの。
+Client Fit をリリースするために必要な手順をまとめたもの。
 ドメイン取得・デプロイはローカル確認完了後の最終ステップとする。
 
 - Supabaseプロジェクト: `cpjskwdsznfupicsqbpy`
