@@ -1,25 +1,106 @@
 @import "tailwindcss";
 
-:root {
+@theme {
+  /* Fonts */
+  --font-sans: "Inter", "Noto Sans JP", system-ui, sans-serif;
+  --font-jp: "Noto Sans JP", "Inter", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
   /* Brand */
-  --ayf-blue:      #2563eb;   /* primary blue */
-  --ayf-blue-light:#eff6ff;   /* blue tint bg */
-  --ayf-sky:       #0ea5e9;   /* accent sky */
-  --ayf-teal:      #0d9488;   /* health teal */
+  --color-brand-50: #eff6ff;
+  --color-brand-100: #dbeafe;
+  --color-brand-200: #bfdbfe;
+  --color-brand-300: #93c5fd;
+  --color-brand-400: #60a5fa;
+  --color-brand-500: #3b82f6;
+  --color-brand-600: #2563eb;
+  --color-brand-700: #1d4ed8;
+  --color-brand-cyan: #0ea5e9;
 
-  /* Surface */
-  --ayf-bg:        #f0f4f8;   /* page bg */
-  --ayf-surface:   #ffffff;   /* card bg */
-  --ayf-border:    #e2e8f0;   /* card border */
+  /* Ink (neutrals) */
+  --color-ink-50:  #f8fafc;
+  --color-ink-100: #f1f5f9;
+  --color-ink-200: #e2e8f0;
+  --color-ink-300: #cbd5e1;
+  --color-ink-400: #94a3b8;
+  --color-ink-500: #64748b;
+  --color-ink-600: #475569;
+  --color-ink-700: #1e293b;
+  --color-ink-800: #0f172a;
+  --color-ink-900: #0a0f1e;
+  --color-ink-950: #050814;
 
-  /* Text */
-  --ayf-text:      #0f172a;   /* primary text */
-  --ayf-muted:     #64748b;   /* secondary text */
-  --ayf-subtle:    #94a3b8;   /* placeholder */
+  /* Shadows */
+  --shadow-card: 0 1px 2px rgba(15,23,42,0.04), 0 1px 3px rgba(15,23,42,0.06);
+  --shadow-pop:  0 8px 24px rgba(15,23,42,0.08), 0 2px 6px rgba(15,23,42,0.04);
+  --shadow-glow: 0 0 0 1px rgba(59,130,246,0.25), 0 8px 32px -8px rgba(59,130,246,0.35);
+
+  /* Legacy AYF tokens kept for existing pages */
+  --color-ayf-blue:       #2563eb;
+  --color-ayf-blue-light: #eff6ff;
+  --color-ayf-sky:        #0ea5e9;
+  --color-ayf-teal:       #0d9488;
+  --color-ayf-bg:         #f0f4f8;
+  --color-ayf-surface:    #ffffff;
+  --color-ayf-border:     #e2e8f0;
+  --color-ayf-text:       #0f172a;
+  --color-ayf-muted:      #64748b;
+  --color-ayf-subtle:     #94a3b8;
 }
 
+html, body {
+  font-family: "Inter", "Noto Sans JP", system-ui, sans-serif;
+}
 body {
-  font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
-  background-color: var(--ayf-bg);
-  color: var(--ayf-text);
+  background-color: #f8fafc;
+  color: #0f172a;
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "cv02","cv03","cv04","cv11";
 }
+.font-jp { font-family: "Noto Sans JP", Inter, sans-serif; }
+.font-mono { font-family: "JetBrains Mono", ui-monospace, monospace; font-feature-settings: "tnum"; }
+
+/* Brand gradient */
+.grad-brand { background: linear-gradient(135deg,#3b82f6,#0ea5e9); }
+.grad-text {
+  background: linear-gradient(135deg,#60a5fa 0%, #22d3ee 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+
+/* Dark LP surfaces */
+.bg-ink { background: #0a0f1e; }
+.bg-ink-grid {
+  background-color: #0a0f1e;
+  background-image:
+    radial-gradient(ellipse at top, rgba(59,130,246,0.18), transparent 55%),
+    radial-gradient(ellipse at 80% 30%, rgba(14,165,233,0.12), transparent 50%),
+    linear-gradient(rgba(148,163,184,0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148,163,184,0.06) 1px, transparent 1px);
+  background-size: auto, auto, 48px 48px, 48px 48px;
+}
+
+/* Focus ring */
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 2px solid #3b82f6; outline-offset: 2px; border-radius: 8px;
+}
+input[type="checkbox"] { accent-color: #3b82f6; }
+
+/* Scrollbar */
+.nice-scroll::-webkit-scrollbar { width: 10px; height: 10px; }
+.nice-scroll::-webkit-scrollbar-thumb { background: rgba(100,116,139,.25); border-radius: 999px; }
+.nice-scroll::-webkit-scrollbar-thumb:hover { background: rgba(100,116,139,.4); }
+
+/* Animations */
+@keyframes cfFadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.anim-in { animation: cfFadeIn .35s ease-out both; }
+
+@keyframes pulseDot { 0%,100% { opacity:.5; transform:scale(1); } 50% { opacity:1; transform:scale(1.2); } }
+.pulse-dot { animation: pulseDot 1.6s ease-in-out infinite; }
+
+.spark:hover path { filter: brightness(1.1); }
+
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
+
+.dot { width: 8px; height: 8px; border-radius: 999px; display: inline-block; }
