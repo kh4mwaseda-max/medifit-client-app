@@ -1,6 +1,6 @@
 # Client Fit ローンチチェックリスト
 
-更新: 佐藤 / 2026-04-20（B2Bピボット対応版・OWNER_ACTIONS追加）
+更新: 佐藤 / 2026-04-21（cf design tokens 全画面統一 + Cookie secure フラグ + Node engines 追記）
 
 ---
 
@@ -20,6 +20,10 @@
 - [x] ドキュメント全更新（FEATURES.md / CLAUDE.md / RELEASE.md）
 - [x] note記事改訂（トレーナー向け）
 - [x] ビルド成功確認
+- [x] cf design tokens 全12画面統一（2026-04-21）
+- [x] 認証Cookie に `secure: isProd` フラグ追加（trainer/auth・trainer/register・auth/pin の3ルート）
+- [x] `package.json` に `engines.node >= 20.0.0` と `typecheck` スクリプト追加
+- [x] 体型写真アップロード機能（Web・Before/After 比較・署名付きURL）— クライアント・トレーナー両面対応（2026-04-21）
 
 ---
 
@@ -41,7 +45,7 @@
 2. LINE Messaging API チャネル設定（必須） — 20分
 3. Anthropic APIキー確認（必須） — 5分
 4. Vercel デプロイ + 環境変数 + ドメイン接続 — 30〜60分
-5. 本番動作確認 — 15分
+5. 本番動作確認（体型写真アップも含む） — 15分
 
 合計: 約90〜120分で本番稼働。
 

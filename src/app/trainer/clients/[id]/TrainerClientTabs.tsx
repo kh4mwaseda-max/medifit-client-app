@@ -7,6 +7,9 @@ import TrainingForm from "./TrainingForm";
 import AssessmentManager from "./AssessmentManager";
 import GoalSetForm from "./GoalSetForm";
 import SessionManager from "./SessionManager";
+import PhotoTab from "@/components/PhotoTab";
+import type { Photo } from "@/components/PhotoComparison";
+import { Button, Icon, Tabs, cn } from "@/components/cf/primitives";
 import { format, parseISO } from "date-fns";
 import { ja } from "date-fns/locale";
 import {
@@ -37,21 +40,21 @@ function InternalMemoBox({ clientId, initialMemo }: { clientId: string; initialM
     <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-2.5">
       <div className="flex items-center gap-2">
         <span className="text-base">📝</span>
-        <p className="text-xs font-semibold text-amber-700">引き継ぎメモ（トレーナー内部用）</p>
-        <span className="text-[9px] text-amber-400 ml-auto">クライアントには非表示</span>
+        <p className="text-xs font-bold text-amber-800">引き継ぎメモ（内部用）</p>
+        <span className="text-[10px] text-amber-500 ml-auto">クライアントには非表示</span>
       </div>
       <textarea
         value={memo}
         onChange={(e) => setMemo(e.target.value)}
         placeholder="セッション引き継ぎ・気になる点・次回確認事項など..."
         rows={3}
-        className="w-full bg-white border border-amber-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:border-amber-400 resize-none placeholder:text-slate-300"
+        className="w-full bg-white border border-amber-200 rounded-xl px-3 py-2.5 text-sm text-ink-800 focus:outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-300/20 resize-none placeholder:text-ink-400"
       />
       <button
         type="button"
         onClick={save}
         disabled={saving}
-        className="w-full bg-amber-500 hover:bg-amber-600 disabled:bg-amber-200 text-white font-semibold py-2 rounded-xl text-xs transition-colors"
+        className="w-full bg-amber-500 hover:bg-amber-600 disabled:bg-amber-200 text-white font-bold py-2 rounded-xl text-xs transition"
       >
         {saved ? "保存しました ✅" : saving ? "保存中..." : "メモを保存"}
       </button>
@@ -89,33 +92,43 @@ function LineMessageBox({ clientId, lineUserId, clientName }: { clientId: string
   if (!lineUserId) return null;
 
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl p-4 space-y-3">
+    <div className="bg-white border border-ink-200/70 rounded-2xl p-4 space-y-3 shadow-card">
       <div className="flex items-center gap-2">
-        <span className="text-base">💬</span>
-        <p className="text-xs font-semibold text-slate-700">{clientName} さんにLINEで送る</p>
-        <span className="text-[10px] bg-green-50 text-green-600 border border-green-200 px-2 py-0.5 rounded-full">Client Fit公式経由</span>
+        <div className="w-7 h-7 rounded-lg bg-[#06C755]/10 text-[#06C755] flex items-center justify-center">
+          <Icon name="message-circle" />
+        </div>
+        <p className="text-xs font-bold text-ink-800">{clientName} さんにLINEで送る</p>
+        <span className="text-[10px] bg-[#06C755]/10 text-[#06C755] border border-[#06C755]/20 px-2 py-0.5 rounded-full ml-auto font-semibold">公式経由</span>
       </div>
       <textarea
         value={msg}
         onChange={(e) => setMsg(e.target.value)}
         placeholder="メッセージを入力..."
         rows={3}
-        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:border-blue-400 resize-none"
+        className="w-full bg-ink-50 border border-ink-200 rounded-xl px-3 py-2.5 text-sm text-ink-800 focus:outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 resize-none"
       />
-      {error && <p className="text-xs text-rose-500">{error}</p>}
-      <button
-        type="button"
+      {error && (
+        <div className="flex items-start gap-2 bg-red-50 border border-red-100 rounded-xl px-3 py-2">
+          <Icon name="alert-circle" className="text-red-600 mt-0.5" />
+          <p className="text-xs text-red-700">{error}</p>
+        </div>
+      )}
+      <Button
+        variant="line"
+        size="md"
+        className="w-full"
+        icon="message-circle"
+        loading={sending}
+        disabled={!msg.trim()}
         onClick={send}
-        disabled={sending || !msg.trim()}
-        className="w-full bg-green-500 hover:bg-green-600 disabled:bg-slate-100 disabled:text-slate-400 text-white font-semibold py-2.5 rounded-xl text-sm transition-colors"
       >
-        {sent ? "送信しました✅" : sending ? "送信中..." : "LINEで送信"}
-      </button>
+        {sent ? "送信しました" : sending ? "送信中..." : "LINEで送信"}
+      </Button>
     </div>
   );
 }
 
-const TABS = ["目標設定", "身体記録", "トレーニング", "予約", "アセスメント"] as const;
+const TABS = ["目標設定", "身体記録", "トレーニング", "フォト", "予約", "アセスメント"] as const;
 
 type Phase = 1 | 2 | 3 | 4;
 
@@ -133,6 +146,7 @@ interface Props {
   assessments: any[];
   goals: any | null;
   clientUrl: string;
+  bodyPhotos: Photo[];
 }
 
 const PHASE_STEPS = [
@@ -144,7 +158,7 @@ const PHASE_STEPS = [
 
 function PhaseProgress({ phase }: { phase: Phase }) {
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl px-4 py-3 shadow-sm">
+    <div className="bg-white border border-ink-200/70 rounded-2xl px-4 py-4 shadow-card">
       <div className="flex items-center">
         {PHASE_STEPS.map((step, i) => {
           const done = phase > step.phase;
@@ -152,17 +166,26 @@ function PhaseProgress({ phase }: { phase: Phase }) {
           return (
             <div key={step.phase} className="flex items-center flex-1">
               <div className="flex flex-col items-center flex-none">
-                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-sm transition-colors ${
-                  done ? "bg-teal-500 text-white" : active ? "bg-blue-600 text-white ring-2 ring-blue-300" : "bg-slate-100 text-slate-400"
-                }`}>
-                  {done ? "✓" : step.icon}
+                <div className={cn(
+                  "w-8 h-8 rounded-full flex items-center justify-center text-sm font-black transition",
+                  done && "bg-emerald-500 text-white shadow-[0_4px_12px_-4px_rgba(16,185,129,0.5)]",
+                  active && "bg-brand-500 text-white shadow-[0_4px_12px_-4px_rgba(59,130,246,0.5)] ring-4 ring-brand-500/20",
+                  !done && !active && "bg-ink-100 text-ink-400",
+                )}>
+                  {done ? <Icon name="check-circle" /> : step.icon}
                 </div>
-                <p className={`text-[9px] mt-1 font-medium ${active ? "text-blue-600" : done ? "text-teal-500" : "text-slate-400"}`}>
+                <p className={cn(
+                  "text-[10px] mt-1.5 font-semibold",
+                  active ? "text-ink-800" : done ? "text-emerald-600" : "text-ink-400",
+                )}>
                   {step.label}
                 </p>
               </div>
               {i < PHASE_STEPS.length - 1 && (
-                <div className={`flex-1 h-0.5 mx-1 mb-4 ${done ? "bg-teal-300" : "bg-slate-100"}`} />
+                <div className={cn(
+                  "flex-1 h-0.5 mx-2 -mt-5 transition",
+                  done ? "bg-emerald-400" : "bg-ink-200",
+                )} />
               )}
             </div>
           );
@@ -172,7 +195,7 @@ function PhaseProgress({ phase }: { phase: Phase }) {
   );
 }
 
-export default function TrainerClientTabs({ client, bodyRecords, trainingSessions, assessments, goals, clientUrl }: Props) {
+export default function TrainerClientTabs({ client, bodyRecords, trainingSessions, assessments, goals, clientUrl, bodyPhotos }: Props) {
   const phase = getPhase(client, goals);
   // 初回（目標未送信）は「目標設定」、送信済みなら「身体記録」（=データダッシュボード）を初期表示
   const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>(
@@ -385,31 +408,24 @@ ${LINE_FRIEND_URL}
       {/* レポートリンク */}
       <Link
         href={`/trainer/clients/${client.id}/report`}
-        className="flex items-center justify-between bg-white border border-slate-200 rounded-2xl px-4 py-3 shadow-sm hover:border-blue-200 hover:shadow-md transition-all group mb-4"
+        className="flex items-center justify-between bg-white border border-ink-200/70 rounded-2xl px-4 py-3 shadow-card hover:border-brand-200 hover:shadow-pop transition-all group mb-4"
       >
-        <div className="flex items-center gap-2">
-          <span className="text-base">📊</span>
-          <span className="text-sm font-medium text-slate-700">週次・月次レポート</span>
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-brand-50 text-brand-600 flex items-center justify-center">
+            <Icon name="file-text" />
+          </div>
+          <span className="text-sm font-bold text-ink-800">週次・月次レポート</span>
         </div>
-        <span className="text-slate-300 group-hover:text-blue-400 transition-colors">›</span>
+        <Icon name="chevron-right" className="text-ink-400 group-hover:text-brand-500 transition" />
       </Link>
 
-      <nav className="flex border-b border-slate-200 mb-5 overflow-x-auto">
-        {TABS.map((tab) => (
-          <button
-            key={tab}
-            type="button"
-            onClick={() => setActiveTab(tab)}
-            className={`px-4 py-3 text-xs font-medium transition-colors whitespace-nowrap ${
-              activeTab === tab
-                ? "text-blue-600 border-b-2 border-blue-600"
-                : "text-slate-400 hover:text-slate-600"
-            }`}
-          >
-            {tab}
-          </button>
-        ))}
-      </nav>
+      <div className="mb-5 overflow-x-auto">
+        <Tabs
+          tabs={TABS.map((t) => ({ value: t, label: t }))}
+          value={activeTab}
+          onChange={(v) => setActiveTab(v as (typeof TABS)[number])}
+        />
+      </div>
 
       {/* 引き継ぎメモ */}
       <div className="mb-3">
@@ -446,6 +462,10 @@ ${LINE_FRIEND_URL}
         </div>
       )}
 
+      {activeTab === "フォト" && (
+        <PhotoTab clientId={client.id} initialPhotos={bodyPhotos} />
+      )}
+
       {activeTab === "予約" && (
         <SessionManager clientId={client.id} clientName={client.name} />
       )}
@@ -458,7 +478,7 @@ ${LINE_FRIEND_URL}
 }
 
 function RecentBodyRecords({ records }: { records: any[] }) {
-  if (records.length === 0) return <p className="text-sm text-slate-400 text-center py-4">記録がありません</p>;
+  if (records.length === 0) return <p className="text-sm text-ink-400 text-center py-4">記録がありません</p>;
 
   const chartData = [...records].reverse().map((r) => ({
     date: format(parseISO(r.recorded_at), "M/d"),
@@ -472,8 +492,8 @@ function RecentBodyRecords({ records }: { records: any[] }) {
   return (
     <div className="space-y-4">
       {chartData.length >= 2 && (
-        <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm">
-          <p className="text-xs text-slate-500 font-medium mb-3">推移グラフ</p>
+        <div className="bg-white rounded-2xl p-4 border border-ink-200/70 shadow-card">
+          <p className="text-xs text-ink-700 font-bold mb-3">推移グラフ</p>
           <ResponsiveContainer width="100%" height={180}>
             <LineChart data={chartData} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
@@ -489,14 +509,14 @@ function RecentBodyRecords({ records }: { records: any[] }) {
       )}
 
       <div className="space-y-2">
-        <p className="text-xs text-slate-400 font-medium">直近の記録</p>
+        <p className="text-xs text-ink-700 font-bold">直近の記録</p>
         {records.slice(0, 7).map((r) => (
-          <div key={r.id} className="bg-white rounded-xl p-3 border border-slate-200 flex justify-between items-center">
-            <p className="text-xs text-slate-500">{format(parseISO(r.recorded_at), "M月d日(E)", { locale: ja })}</p>
-            <div className="flex gap-4 text-sm">
-              {r.weight_kg && <span className="font-semibold text-slate-700">{r.weight_kg}<span className="text-xs text-slate-400 font-normal">kg</span></span>}
-              {r.body_fat_pct && <span className="font-semibold text-slate-700">{r.body_fat_pct}<span className="text-xs text-slate-400 font-normal">%</span></span>}
-              {r.condition_score && <span className="font-semibold text-slate-700">{r.condition_score}<span className="text-xs text-slate-400 font-normal">/10</span></span>}
+          <div key={r.id} className="bg-white rounded-xl p-3 border border-ink-200/70 flex justify-between items-center shadow-card">
+            <p className="text-xs text-ink-500 font-medium">{format(parseISO(r.recorded_at), "M月d日(E)", { locale: ja })}</p>
+            <div className="flex gap-4 text-sm font-mono">
+              {r.weight_kg && <span className="font-black text-ink-800">{r.weight_kg}<span className="text-xs text-ink-400 font-normal ml-0.5">kg</span></span>}
+              {r.body_fat_pct && <span className="font-black text-ink-800">{r.body_fat_pct}<span className="text-xs text-ink-400 font-normal ml-0.5">%</span></span>}
+              {r.condition_score && <span className="font-black text-ink-800">{r.condition_score}<span className="text-xs text-ink-400 font-normal ml-0.5">/10</span></span>}
             </div>
           </div>
         ))}
@@ -506,17 +526,17 @@ function RecentBodyRecords({ records }: { records: any[] }) {
 }
 
 function RecentSessions({ sessions }: { sessions: any[] }) {
-  if (sessions.length === 0) return <p className="text-sm text-slate-400 text-center py-4">セッションがありません</p>;
+  if (sessions.length === 0) return <p className="text-sm text-ink-400 text-center py-4">セッションがありません</p>;
   return (
     <div className="space-y-2">
-      <p className="text-xs text-slate-400 font-medium">直近のセッション</p>
+      <p className="text-xs text-ink-700 font-bold">直近のセッション</p>
       {sessions.slice(0, 7).map((s) => (
-        <div key={s.id} className="bg-white rounded-xl p-3 border border-slate-200">
+        <div key={s.id} className="bg-white rounded-xl p-3 border border-ink-200/70 shadow-card">
           <div className="flex justify-between">
-            <p className="text-xs text-slate-500">{format(parseISO(s.session_date), "M月d日(E)", { locale: ja })}</p>
-            <p className="text-xs text-slate-400">{s.training_sets?.length ?? 0} セット</p>
+            <p className="text-xs text-ink-500 font-medium">{format(parseISO(s.session_date), "M月d日(E)", { locale: ja })}</p>
+            <p className="text-xs text-ink-700 font-semibold">{s.training_sets?.length ?? 0} セット</p>
           </div>
-          {s.notes && <p className="text-xs text-slate-400 mt-1">{s.notes}</p>}
+          {s.notes && <p className="text-xs text-ink-500 mt-1">{s.notes}</p>}
         </div>
       ))}
     </div>

@@ -22,7 +22,7 @@
 | 5 | `supabase/migration-20260413-scheduled-sessions.sql` |
 | 6 | `supabase/migration-20260414-line-image-usage.sql` |
 
-**確認**: Table Editor で `trainers` / `clients` / `body_records` / `training_sessions` / `line_parse_logs` / `line_image_usage` が存在するか。
+**確認**: Table Editor で `trainers` / `clients` / `body_records` / `training_sessions` / `line_parse_logs` / `line_image_usage` / `body_photos` が存在するか。Storage タブで `body-photos` バケット（Private）があるか。— **2026-04-21 時点で既に全て作成済みの想定**
 
 **次に**: Settings → API から以下3つをコピーして保管（STEP 4で使用）
 
@@ -116,6 +116,7 @@ STEP 2 のチャネル設定で Webhook URL を `https://[本番ドメイン]/ap
 - [ ] 新規クライアント作成 → 招待リンク発行 → スマホでPIN入力 → `/client/[id]` が開ける
 - [ ] Client Fit 公式 LINE に食事スクショを送る → ダッシュボードに反映される
 - [ ] 翌朝のデイリーサマリーが LINE に届く（または `/api/cron/daily-summary` を手動叩く）
+- [ ] `/client/[id]` フォトタブで体型写真をアップロード → Before/After が並ぶ（トレーナー側 `/trainer/clients/[id]` の「フォト」タブでも同じ写真が見える）
 
 ---
 

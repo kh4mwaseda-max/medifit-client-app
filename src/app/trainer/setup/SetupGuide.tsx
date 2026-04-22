@@ -2,14 +2,20 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Logo from "@/components/Logo";
+import { Logo, Button, Icon, cn } from "@/components/cf/primitives";
 
 interface Props {
-  trainer: { id: string; name: string; plan: string; line_channel_access_token: string | null };
+  trainer: {
+    id: string;
+    name: string;
+    plan: string;
+    line_channel_access_token: string | null;
+  };
   webhookUrl: string;
 }
 
-const LINE_FRIEND_URL = process.env.NEXT_PUBLIC_LINE_FRIEND_URL ?? "https://lin.ee/YOUR_LINE_ID";
+const LINE_FRIEND_URL =
+  process.env.NEXT_PUBLIC_LINE_FRIEND_URL ?? "https://lin.ee/YOUR_LINE_ID";
 
 type Step = "welcome" | "line" | "done";
 
@@ -20,14 +26,15 @@ export default function SetupGuide({ trainer }: Props) {
   const [lineCodeGenerating, setLineCodeGenerating] = useState(false);
   const [lineCodeError, setLineCodeError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const [sentConfirmed, setSentConfirmed] = useState(false);
   const router = useRouter();
 
   const generateLineCode = async () => {
     setLineCodeGenerating(true);
     setLineCodeError(null);
     try {
-      const res = await fetch("/api/trainer/line-link-code", { method: "POST" });
+      const res = await fetch("/api/trainer/line-link-code", {
+        method: "POST",
+      });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "コードの発行に失敗しました");
       setLineCode(data.code);
@@ -46,155 +53,245 @@ export default function SetupGuide({ trainer }: Props) {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const stepIndex: Record<Step, number> = { welcome: 0, line: 1, done: 2 };
+  const steps: { key: Step; label: string }[] = [
+    { key: "welcome", label: "ようこそ" },
+    { key: "line", label: "LINE連携" },
+    { key: "done", label: "完了" },
+  ];
+
   return (
-    <div className="space-y-5">
-      {/* ヘッダー */}
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <Logo size="sm" variant="full" />
-        <div className="flex gap-1.5">
-          {(["welcome", "line", "done"] as Step[]).map((s, i) => (
-            <div
-              key={s}
-              className={`h-1.5 w-8 rounded-full transition-all ${
-                step === "done" ? "bg-blue-600" :
-                step === "line" && i <= 1 ? "bg-blue-600" :
-                step === "welcome" && i === 0 ? "bg-blue-400" :
-                "bg-slate-200"
-              }`}
-            />
-          ))}
+        <Logo />
+        <div className="text-[10px] text-ink-500 font-medium">
+          {stepIndex[step] + 1} / 3
         </div>
       </div>
 
-      {/* ── STEP 1: ウェルカム ── */}
+      {/* Stepper */}
+      <div className="flex items-center">
+        {steps.map((s, i) => {
+          const active = stepIndex[step] >= i;
+          const current = step === s.key;
+          return (
+            <div key={s.key} className="flex-1 flex items-center">
+              <div className="flex flex-col items-center">
+                <div
+                  className={cn(
+                    "w-8 h-8 rounded-full flex items-center justify-center text-xs font-black transition",
+                    active
+                      ? "bg-brand-500 text-white shadow-[0_4px_12px_-4px_rgba(59,130,246,0.5)]"
+                      : "bg-ink-100 text-ink-400",
+                    current && "ring-4 ring-brand-500/20",
+                  )}
+                >
+                  {stepIndex[step] > i ? <Icon name="check-circle" /> : i + 1}
+                </div>
+                <span
+                  className={cn(
+                    "text-[10px] mt-1.5 font-semibold",
+                    active ? "text-ink-700" : "text-ink-400",
+                  )}
+                >
+                  {s.label}
+                </span>
+              </div>
+              {i < steps.length - 1 && (
+                <div
+                  className={cn(
+                    "flex-1 h-0.5 mx-2 -mt-5 transition",
+                    stepIndex[step] > i ? "bg-brand-500" : "bg-ink-200",
+                  )}
+                />
+              )}
+            </div>
+          );
+        })}
+      </div>
+
       {step === "welcome" && (
         <div className="space-y-4">
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-5">
-            <div className="text-center space-y-2">
-              <p className="text-3xl">👋</p>
-              <h1 className="text-lg font-black text-slate-800">{trainer.name} さん、<br />ようこそ！</h1>
-              <p className="text-sm text-slate-500">2ステップでセットアップ完了します</p>
+          <div className="bg-white rounded-2xl shadow-card border border-ink-200/70 p-6 space-y-5">
+            <div className="text-center">
+              <div className="text-4xl mb-2">👋</div>
+              <h1 className="text-xl font-black text-ink-800 tracking-tight">
+                {trainer.name} さん、ようこそ！
+              </h1>
+              <p className="text-sm text-ink-500 mt-1">
+                2ステップでセットアップ完了します
+              </p>
             </div>
 
             <div className="space-y-3">
               {[
-                { step: "1", icon: "📱", title: "LINE通知を連携する", desc: "Client Fit公式LINEにコードを送るだけ。クライアントの記録が届いたら通知が来ます" },
-                { step: "2", icon: "📨", title: "招待リンクが届く", desc: "連携完了と同時に、クライアントへの招待リンクがLINEで届きます。そのまま転送するだけ" },
-              ].map(({ step: n, icon, title, desc }) => (
-                <div key={n} className="flex items-start gap-3">
-                  <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-600 font-black text-xs flex items-center justify-center flex-none mt-0.5">{n}</span>
+                {
+                  n: "1",
+                  icon: "message-circle",
+                  title: "LINE通知を連携する",
+                  desc: "公式LINEにコードを送るだけ。記録が届いたら通知が来ます",
+                },
+                {
+                  n: "2",
+                  icon: "user-plus",
+                  title: "招待リンクが届く",
+                  desc: "連携完了と同時に、クライアントへの招待リンクがLINEで届きます",
+                },
+              ].map((item) => (
+                <div
+                  key={item.n}
+                  className="flex items-start gap-3 bg-ink-50 rounded-xl p-3"
+                >
+                  <div className="w-9 h-9 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center shrink-0">
+                    <Icon name={item.icon} />
+                  </div>
                   <div>
-                    <p className="text-sm font-bold text-slate-700">{icon} {title}</p>
-                    <p className="text-xs text-slate-400 mt-0.5">{desc}</p>
+                    <p className="text-sm font-bold text-ink-800">
+                      {item.title}
+                    </p>
+                    <p className="text-xs text-ink-500 mt-0.5">{item.desc}</p>
                   </div>
                 </div>
               ))}
             </div>
           </div>
 
-          <button
-            type="button"
+          <Button
+            variant="primary"
+            size="lg"
+            className="w-full"
+            iconRight="chevron-right"
             onClick={() => setStep("line")}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-2xl text-sm transition-colors shadow-sm"
           >
-            LINE通知を設定する →
-          </button>
+            LINE通知を設定する
+          </Button>
         </div>
       )}
 
-      {/* ── STEP 2: LINE連携（必須） ── */}
       {step === "line" && (
         <div className="space-y-4">
-          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-5">
+          <div className="bg-white rounded-2xl shadow-card border border-ink-200/70 p-5 space-y-5">
             <div>
-              <p className="text-xs text-blue-600 font-bold uppercase tracking-widest">Step 1</p>
-              <h2 className="text-base font-black text-slate-800 mt-0.5">Client Fit公式LINEに友達追加 & コードを送る</h2>
-              <p className="text-xs text-slate-500 mt-1">クライアントが記録を送ったとき、あなたのLINEに通知が届くようになります</p>
+              <span className="text-[10px] font-bold text-brand-600 bg-brand-50 border border-brand-100 px-2 py-0.5 rounded-md uppercase tracking-widest">
+                Step 1
+              </span>
+              <h2 className="text-base font-black text-ink-800 mt-2">
+                公式LINEを友達追加 & コードを送る
+              </h2>
+              <p className="text-xs text-ink-500 mt-1">
+                クライアントの記録時、あなたのLINEに通知が届きます
+              </p>
             </div>
 
-            {/* フェーズ1: コード発行前 */}
             {!lineCode && (
               <div className="space-y-4">
                 <div className="space-y-2.5">
                   {[
-                    "① 下の「コードを発行する」をタップ",
-                    "② 表示されたコードをコピー",
-                    "③ Client Fit公式LINEを友達追加",
-                    "④ コードをLINEに送信 → 完了",
+                    "「コードを発行する」をタップ",
+                    "表示されたコードをコピー",
+                    "公式LINEを友達追加",
+                    "コードをLINEに送信 → 完了",
                   ].map((t, i) => (
-                    <div key={i} className="flex items-center gap-3 text-xs text-slate-600">
-                      <span className="w-5 h-5 rounded-full bg-blue-50 text-blue-500 font-bold text-[10px] flex items-center justify-center flex-none">{i + 1}</span>
-                      <span>{t.replace(/^[①-④] /, "")}</span>
+                    <div
+                      key={i}
+                      className="flex items-center gap-3 text-xs text-ink-700"
+                    >
+                      <span className="w-6 h-6 rounded-full bg-brand-50 text-brand-600 font-bold text-[11px] flex items-center justify-center shrink-0">
+                        {i + 1}
+                      </span>
+                      <span>{t}</span>
                     </div>
                   ))}
                 </div>
 
                 {lineCodeError && (
-                  <div className="bg-rose-50 border border-rose-200 rounded-xl px-4 py-3 text-xs text-rose-600">
-                    {lineCodeError}
+                  <div className="flex items-start gap-2 bg-red-50 border border-red-100 rounded-xl px-3 py-2.5">
+                    <Icon
+                      name="alert-circle"
+                      className="text-red-600 mt-0.5"
+                    />
+                    <p className="text-xs text-red-700">{lineCodeError}</p>
                   </div>
                 )}
 
-                <button
-                  type="button"
+                <Button
+                  variant="primary"
+                  size="lg"
+                  className="w-full"
+                  loading={lineCodeGenerating}
                   onClick={generateLineCode}
-                  disabled={lineCodeGenerating}
-                  className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-400 text-white font-bold py-3.5 rounded-xl text-sm transition-colors"
                 >
-                  {lineCodeGenerating ? "発行中..." : "🔑 コードを発行する"}
-                </button>
+                  {lineCodeGenerating ? "発行中..." : "コードを発行する"}
+                </Button>
               </div>
             )}
 
-            {/* フェーズ2: コード発行後 */}
             {lineCode && (
               <div className="space-y-4">
-                {/* コード表示 */}
-                <div className="bg-blue-50 border-2 border-blue-300 rounded-2xl p-5 text-center space-y-3">
-                  <p className="text-xs text-blue-600 font-bold">このコードをClient Fit公式LINEに送ってください</p>
-                  <p className="text-5xl font-black tracking-[0.4em] text-blue-700 font-mono">{lineCode}</p>
+                <div className="bg-brand-50 border-2 border-brand-200 rounded-2xl p-5 text-center space-y-3">
+                  <p className="text-xs text-brand-700 font-bold">
+                    このコードを公式LINEに送ってください
+                  </p>
+                  <p className="text-5xl font-black tracking-[0.4em] text-brand-700 font-mono">
+                    {lineCode}
+                  </p>
                   {lineCodeExpiry && (
-                    <p className="text-[10px] text-slate-400">
-                      有効期限: {lineCodeExpiry.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })} まで
+                    <p className="text-[10px] text-ink-500">
+                      有効期限:{" "}
+                      {lineCodeExpiry.toLocaleTimeString("ja-JP", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}{" "}
+                      まで
                     </p>
                   )}
-                  <button
-                    type="button"
+                  <Button
+                    variant="secondary"
+                    size="md"
+                    className="w-full"
                     onClick={copy}
-                    className="w-full bg-white border border-blue-200 hover:bg-blue-50 text-blue-600 font-bold py-2.5 rounded-xl text-sm transition-colors"
                   >
-                    {copied ? "✅ コピーしました" : "📋 コードをコピー"}
-                  </button>
+                    {copied ? "✅ コピーしました" : "コードをコピー"}
+                  </Button>
                 </div>
 
-                {/* LINE友達追加ボタン */}
                 <a
                   href={LINE_FRIEND_URL}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex items-center justify-center gap-2 w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3.5 rounded-xl text-sm transition-colors"
+                  className="flex items-center justify-center gap-2 w-full h-12 bg-[#06C755] hover:brightness-110 text-white font-bold rounded-xl text-sm transition shadow-[0_8px_20px_-8px_rgba(6,199,85,0.6)]"
                 >
-                  📱 Client Fit公式LINEを友達追加する
+                  <Icon name="message-circle" />
+                  公式LINEを友達追加
                 </a>
 
-                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-xs text-amber-700 space-y-2">
-                  <p className="font-bold">② LINEを確認してください</p>
-                  <p>Client Fit公式から「✅ LINE通知の連携が完了しました！」と返信が届いたら連携完了です。</p>
-                  <p className="text-amber-500">連携が確認できたら管理画面に進んでください👇</p>
+                <div className="flex items-start gap-2 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2.5">
+                  <Icon name="info" className="text-amber-600 mt-0.5" />
+                  <div className="text-xs text-amber-800 space-y-1">
+                    <p className="font-bold">LINEを確認してください</p>
+                    <p className="text-amber-700">
+                      「✅ LINE通知の連携が完了しました！」が届けば連携完了です。
+                    </p>
+                  </div>
                 </div>
 
-                <button
-                  type="button"
+                <Button
+                  variant="primary"
+                  size="lg"
+                  className="w-full"
+                  iconRight="chevron-right"
                   onClick={() => router.replace("/trainer")}
-                  className="w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3.5 rounded-2xl text-sm transition-colors"
                 >
                   連携完了 → 管理画面へ
-                </button>
+                </Button>
 
                 <button
                   type="button"
-                  onClick={() => { setLineCode(null); setLineCodeExpiry(null); setSentConfirmed(false); }}
-                  className="w-full text-xs text-slate-400 hover:text-slate-600 py-1 transition-colors"
+                  onClick={() => {
+                    setLineCode(null);
+                    setLineCodeExpiry(null);
+                  }}
+                  className="w-full text-xs text-ink-500 hover:text-ink-700 py-1 transition"
                 >
                   コードを再発行する
                 </button>
@@ -202,46 +299,61 @@ export default function SetupGuide({ trainer }: Props) {
             )}
           </div>
 
-          <button type="button" onClick={() => setStep("welcome")} className="w-full text-xs text-slate-400 py-2">
-            ← 戻る
+          <button
+            type="button"
+            onClick={() => setStep("welcome")}
+            className="w-full inline-flex items-center justify-center gap-1 text-xs text-ink-500 hover:text-ink-700 py-2"
+          >
+            <Icon name="chevron-left" />
+            戻る
           </button>
         </div>
       )}
 
-      {/* ── STEP 3: 完了 ── */}
       {step === "done" && (
         <div className="space-y-4">
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-5">
-            <div className="text-center space-y-2">
-              <p className="text-4xl">🚀</p>
-              <h2 className="text-lg font-black text-slate-800">セットアップ完了！</h2>
-              <p className="text-sm text-slate-500">LINEに招待リンクが届いています</p>
+          <div className="bg-white rounded-2xl shadow-card border border-ink-200/70 p-6 space-y-5">
+            <div className="text-center">
+              <div className="text-4xl mb-2">🚀</div>
+              <h2 className="text-xl font-black text-ink-800 tracking-tight">
+                セットアップ完了！
+              </h2>
+              <p className="text-sm text-ink-500 mt-1">
+                LINEに招待リンクが届いています
+              </p>
             </div>
 
-            <div className="bg-green-50 border border-green-200 rounded-xl p-4 space-y-2">
-              <p className="text-xs font-bold text-green-700">次にやること</p>
+            <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4 space-y-2">
+              <p className="text-xs font-bold text-emerald-700 uppercase tracking-widest">
+                次にやること
+              </p>
               {[
                 "ダッシュボードの「招待リンク発行」をタップ",
                 "クライアント名を入力してリンクを発行",
                 "リンクとPINをクライアントに送る",
-                "クライアントがリンクから登録 → LINEでPINを送信",
-                "スクショを送るだけで自動記録スタート 📊",
+                "クライアントが登録 → LINEでPINを送信",
+                "スクショを送るだけで自動記録スタート",
               ].map((t, i) => (
-                <div key={i} className="flex items-start gap-2 text-xs text-green-600">
-                  <span className="font-bold flex-none">{i + 1}.</span>
+                <div
+                  key={i}
+                  className="flex items-start gap-2 text-xs text-emerald-800"
+                >
+                  <span className="font-bold shrink-0">{i + 1}.</span>
                   <span>{t}</span>
                 </div>
               ))}
             </div>
           </div>
 
-          <button
-            type="button"
+          <Button
+            variant="primary"
+            size="lg"
+            className="w-full"
+            iconRight="chevron-right"
             onClick={() => router.replace("/trainer")}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-2xl text-sm transition-colors shadow-sm"
           >
-            管理画面へ →
-          </button>
+            管理画面へ
+          </Button>
         </div>
       )}
     </div>

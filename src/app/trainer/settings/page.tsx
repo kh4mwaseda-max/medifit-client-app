@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import { notFound, redirect } from "next/navigation";
 import { createServerClient } from "@/lib/supabase";
 import { getTrainerId } from "@/lib/trainer-auth";
+import { TrainerShell } from "@/components/cf/TrainerShell";
 import TrainerSettingsForm from "./TrainerSettingsForm";
 
 export default async function TrainerSettingsPage({
@@ -16,25 +17,26 @@ export default async function TrainerSettingsPage({
   const supabase = createServerClient();
   const { data: trainer } = await supabase
     .from("trainers")
-    .select("id, name, email, plan, line_notify_user_id, stripe_customer_id, stripe_subscription_id")
+    .select(
+      "id, name, email, plan, line_notify_user_id, stripe_customer_id, stripe_subscription_id",
+    )
     .eq("id", trainerId)
     .single();
 
   if (!trainer) notFound();
 
-  const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/line/webhook/${trainerId}`;
   const params = await searchParams;
   const justUpgraded = params.upgraded === "1";
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <header className="bg-white border-b border-slate-200 px-5 py-4 sticky top-0 z-10 shadow-sm">
-        <div className="max-w-2xl mx-auto flex items-center gap-4">
-          <a href="/trainer" className="text-slate-400 hover:text-slate-600 text-sm">← 戻る</a>
-          <h1 className="text-slate-800 font-semibold text-sm">設定</h1>
-        </div>
-      </header>
-      <main className="max-w-2xl mx-auto px-4 py-6">
+    <TrainerShell
+      active="settings"
+      title="設定"
+      subtitle="プロフィール・LINE連携・課金"
+      trainerName={trainer.name ?? "トレーナー"}
+      trainerEmail={trainer.email ?? undefined}
+    >
+      <div className="max-w-3xl">
         <TrainerSettingsForm
           trainer={{
             id: trainer.id,
@@ -46,7 +48,7 @@ export default async function TrainerSettingsPage({
           }}
           justUpgraded={justUpgraded}
         />
-      </main>
-    </div>
+      </div>
+    </TrainerShell>
   );
 }

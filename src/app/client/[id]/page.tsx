@@ -54,6 +54,7 @@ export default async function ClientPage({ params }: PageProps) {
         .select("*")
         .eq("client_id", id)
         .order("photo_date", { ascending: false })
+        .order("created_at", { ascending: false })
         .limit(52),
       supabase
         .from("assessments")
@@ -72,13 +73,23 @@ export default async function ClientPage({ params }: PageProps) {
         .single(),
     ]);
 
+  const photoRows = bodyPhotos.data ?? [];
+  const photosWithUrls = await Promise.all(
+    photoRows.map(async (p: any) => {
+      const { data: signed } = await supabase.storage
+        .from("body-photos")
+        .createSignedUrl(p.storage_path, 60 * 60 * 24);
+      return { ...p, signed_url: signed?.signedUrl ?? null };
+    }),
+  );
+
   return (
     <ClientDashboard
       client={client}
       bodyRecords={bodyRecords.data ?? []}
       trainingSessions={trainingSessions.data ?? []}
       mealRecords={mealRecords.data ?? []}
-      bodyPhotos={bodyPhotos.data ?? []}
+      bodyPhotos={photosWithUrls}
       assessment={latestAssessment.data ?? null}
       goals={goalsRes.data ?? null}
     />

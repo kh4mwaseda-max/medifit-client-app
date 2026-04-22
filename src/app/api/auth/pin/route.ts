@@ -94,9 +94,11 @@ export async function POST(req: NextRequest) {
     await supabase.from("pin_attempts").delete().eq("client_id", clientId).eq("ip", ip);
   }
 
+  const isProd = process.env.NODE_ENV === "production";
   const res = NextResponse.json({ ok: true });
   res.cookies.set(`client_auth_${clientId}`, "1", {
     httpOnly: true,
+    secure: isProd,
     sameSite: "lax",
     maxAge: 60 * 60 * 24 * 7,
     path: "/",

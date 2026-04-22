@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Logo from "@/components/Logo";
+import Link from "next/link";
+import { Logo, Button, Input, Icon } from "@/components/cf/primitives";
 
-export default function TrainerRegister() {
+export default function TrainerRegisterPage() {
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -27,71 +28,100 @@ export default function TrainerRegister() {
       router.replace("/trainer/setup");
     } else {
       setError(data.error ?? "登録に失敗しました");
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center p-6 bg-slate-50">
-      <div className="w-full max-w-sm space-y-6">
+    <main className="min-h-screen bg-ink-50 flex flex-col">
+      <header className="h-16 bg-white border-b border-ink-200 flex items-center px-5 sm:px-8">
+        <Logo />
+      </header>
 
-        <div className="flex flex-col items-center gap-3">
-          <Logo size="lg" variant="mark" />
+      <div className="flex-1 flex items-center justify-center p-5">
+        <div className="w-full max-w-md space-y-6">
           <div className="text-center">
-            <h1 className="text-xl font-bold text-slate-800 tracking-tight">Client Fit</h1>
-            <p className="mt-1 text-sm text-slate-500">トレーナー登録（無料）</p>
+            <span className="inline-block text-[10px] font-bold text-brand-600 bg-brand-50 border border-brand-100 px-3 py-1 rounded-full uppercase tracking-widest mb-3">
+              無料で登録
+            </span>
+            <h1 className="text-2xl font-black text-ink-800 tracking-tight">
+              トレーナー登録
+            </h1>
+            <p className="mt-1 text-sm text-ink-500">
+              30秒で完了。クレジットカード不要。
+            </p>
           </div>
-        </div>
 
-        <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 space-y-4">
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-1.5">
-              <label className="block text-xs text-slate-500 font-medium">お名前</label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-800 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all text-sm"
-                placeholder="山田 太郎"
-                autoFocus
-              />
+          <div className="bg-white rounded-2xl shadow-card border border-ink-200/70 p-6 space-y-5">
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-ink-700">
+                  お名前
+                </label>
+                <Input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="山田 太郎"
+                  autoFocus
+                  icon="user-plus"
+                />
+              </div>
+
+              {error && (
+                <div className="flex items-start gap-2 bg-red-50 border border-red-100 rounded-xl px-3 py-2.5">
+                  <Icon name="alert-circle" className="text-red-600 mt-0.5" />
+                  <p className="text-xs text-red-700">{error}</p>
+                </div>
+              )}
+
+              <Button
+                type="submit"
+                variant="primary"
+                size="lg"
+                loading={loading}
+                disabled={!name.trim()}
+                className="w-full"
+                iconRight="chevron-right"
+              >
+                {loading ? "登録中..." : "無料で始める"}
+              </Button>
+            </form>
+
+            <div className="pt-4 border-t border-ink-100 space-y-2.5">
+              {[
+                "クレジットカード不要・完全無料で始められる",
+                "クライアントがLINEにスクショを送るだけで自動記録",
+                "翌朝、全クライアントのサマリーがLINEに届く",
+              ].map((t) => (
+                <div
+                  key={t}
+                  className="flex items-start gap-2 text-xs text-ink-600"
+                >
+                  <Icon
+                    name="check-circle"
+                    className="text-emerald-500 mt-0.5 shrink-0"
+                  />
+                  <span>{t}</span>
+                </div>
+              ))}
             </div>
+          </div>
 
-            {error && <p className="text-rose-500 text-sm text-center">{error}</p>}
-
-            <button
-              type="submit"
-              disabled={!name.trim() || loading}
-              className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-100 disabled:text-slate-400 text-white font-semibold py-3 rounded-xl transition-colors text-sm shadow-md shadow-blue-100"
+          <p className="text-center text-xs text-ink-500">
+            登録済みの方は{" "}
+            <Link
+              href="/trainer/login"
+              className="text-brand-600 hover:text-brand-700 font-semibold underline underline-offset-2"
             >
-              {loading ? "登録中..." : "無料で始める →"}
-            </button>
-          </form>
-        </div>
+              ログイン
+            </Link>
+          </p>
 
-        {/* 安心バッジ */}
-        <div className="space-y-2">
-          {[
-            { icon: "✓", text: "クレジットカード不要・完全無料で始められる" },
-            { icon: "✓", text: "クライアントがLINEにスクショを送るだけで自動記録" },
-            { icon: "✓", text: "翌朝、全クライアントのサマリーがLINEに届く" },
-          ].map(({ icon, text }) => (
-            <div key={text} className="flex items-center gap-2 text-xs text-slate-500">
-              <span className="text-teal-500 font-bold flex-none">{icon}</span>
-              <span>{text}</span>
-            </div>
-          ))}
-        </div>
-
-        <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-center">
-          <p className="text-[10px] text-slate-500">
-            ログインはClient Fit公式LINEに「ログイン」と送るだけ。<br />パスワード不要でワンタイムリンクが届きます。
+          <p className="text-center text-[10px] text-ink-400">
+            登録することで利用規約・プライバシーポリシーに同意したものとみなします
           </p>
         </div>
-
-        <p className="text-center text-[10px] text-slate-400">
-          登録することで利用規約・プライバシーポリシーに同意したものとみなします
-        </p>
       </div>
     </main>
   );

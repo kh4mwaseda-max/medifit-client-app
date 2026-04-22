@@ -21,8 +21,8 @@ export default async function SetupPage() {
   const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/line/webhook/${trainerId}`;
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <main className="max-w-lg mx-auto px-4 py-10">
+    <div className="min-h-screen bg-ink-50">
+      <main className="max-w-lg mx-auto px-5 py-10">
         <SetupGuide trainer={trainer} webhookUrl={webhookUrl} />
       </main>
     </div>

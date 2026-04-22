@@ -58,15 +58,18 @@ export async function POST(req: NextRequest) {
     expires_at: expiresAt,
   });
 
+  const isProd = process.env.NODE_ENV === "production";
   const res = NextResponse.json({ ok: true, plan: trainer.plan });
   res.cookies.set("trainer_id", trainer.id, {
     httpOnly: true,
+    secure: isProd,
     sameSite: "lax",
     maxAge: SESSION_MAX_AGE,
     path: "/",
   });
   res.cookies.set("trainer_session", sessionToken, {
     httpOnly: true,
+    secure: isProd,
     sameSite: "lax",
     maxAge: SESSION_MAX_AGE,
     path: "/",

@@ -2,13 +2,15 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import Logo from "@/components/Logo";
+import { Logo, Button, Input, Icon } from "@/components/cf/primitives";
 
 export default function JoinPage() {
   const { token } = useParams<{ token: string }>();
   const router = useRouter();
 
-  const [status, setStatus] = useState<"loading" | "valid" | "invalid" | "done">("loading");
+  const [status, setStatus] = useState<"loading" | "valid" | "invalid" | "done">(
+    "loading",
+  );
   const [trainerName, setTrainerName] = useState("");
   const [clientName, setClientName] = useState("");
   const [saving, setSaving] = useState(false);
@@ -53,100 +55,166 @@ export default function JoinPage() {
 
   if (status === "loading") {
     return (
-      <main className="min-h-screen bg-[#0a0f1e] flex items-center justify-center">
-        <p className="text-slate-400 text-sm">確認中...</p>
+      <main className="min-h-screen bg-ink-50 flex items-center justify-center">
+        <div className="flex items-center gap-3 text-ink-500 text-sm">
+          <span className="w-4 h-4 border-2 border-brand-500/30 border-t-brand-500 rounded-full animate-spin" />
+          確認中...
+        </div>
       </main>
     );
   }
 
   if (status === "invalid") {
     return (
-      <main className="min-h-screen bg-[#0a0f1e] flex flex-col items-center justify-center p-6 text-center">
-        <Logo size="sm" variant="full" theme="dark" />
-        <p className="text-white font-bold text-lg mt-6">リンクが無効です</p>
-        <p className="text-slate-400 text-sm mt-2">招待リンクの有効期限が切れているか、URLが正しくありません。<br />トレーナーに再発行を依頼してください。</p>
+      <main className="min-h-screen bg-ink-50 flex flex-col items-center justify-center p-6 text-center">
+        <Logo />
+        <div className="inline-flex w-14 h-14 rounded-2xl bg-red-50 text-red-600 items-center justify-center mt-8 mb-4">
+          <Icon name="alert-triangle" size={28} />
+        </div>
+        <p className="text-ink-800 font-bold text-lg">リンクが無効です</p>
+        <p className="text-ink-500 text-sm mt-2 max-w-sm leading-relaxed">
+          招待リンクの有効期限が切れているか、URLが正しくありません。
+          <br />
+          トレーナーに再発行を依頼してください。
+        </p>
       </main>
     );
   }
 
   if (status === "done" && clientId) {
     return (
-      <main className="min-h-screen bg-[#0a0f1e] flex flex-col items-center justify-center p-6 text-center space-y-5">
-        <Logo size="sm" variant="full" theme="dark" />
-        <div className="text-4xl">🎉</div>
-        <h1 className="text-white font-black text-lg">{clientName} さん、登録完了です！</h1>
-
-        {pin && (
-          <div className="w-full max-w-xs bg-white/5 border border-white/20 rounded-2xl p-5 space-y-3 text-center">
-            <p className="text-xs text-blue-400 font-bold">次のステップ：LINE連携</p>
-            <p className="text-xs text-slate-400">Client Fit公式LINEを友達追加して、このPINを送ってください</p>
-            <p className="text-4xl font-black font-mono tracking-[0.4em] text-white">{pin}</p>
-            <p className="text-[10px] text-slate-500">スクショを送るだけで自動記録が始まります</p>
+      <main className="min-h-screen bg-ink-50 flex flex-col items-center justify-center p-5">
+        <div className="w-full max-w-md space-y-6">
+          <div className="flex justify-center">
+            <Logo />
           </div>
-        )}
 
-        <button
-          type="button"
-          onClick={() => router.replace(`/client/${clientId}`)}
-          className="w-full max-w-xs bg-blue-500 hover:bg-blue-400 text-white font-bold py-4 rounded-2xl text-sm transition-colors"
-        >
-          ダッシュボードを開く →
-        </button>
+          <div className="grad-brand rounded-3xl p-6 text-white text-center shadow-glow">
+            <div className="text-4xl mb-2">🎉</div>
+            <h1 className="text-xl font-black tracking-tight">
+              {clientName} さん、登録完了！
+            </h1>
+            <p className="text-white/80 text-xs mt-1">
+              Client Fit へようこそ
+            </p>
+          </div>
+
+          {pin && (
+            <div className="bg-white rounded-2xl shadow-card border border-ink-200/70 p-5 space-y-4">
+              <div className="text-center">
+                <span className="inline-block text-[10px] font-bold text-brand-600 bg-brand-50 border border-brand-100 px-3 py-1 rounded-full uppercase tracking-widest">
+                  次のステップ
+                </span>
+                <p className="text-base font-bold text-ink-800 mt-2">
+                  LINE連携用PIN
+                </p>
+                <p className="text-xs text-ink-500 mt-1">
+                  公式LINEを友達追加して、このPINを送信してください
+                </p>
+              </div>
+
+              <div className="bg-ink-50 border border-ink-200 rounded-xl py-4 text-center">
+                <p className="text-4xl font-black font-mono tracking-[0.4em] text-ink-800">
+                  {pin}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                {[
+                  { step: "1", text: "公式LINEを友達追加" },
+                  { step: "2", text: "上のPINをLINEに送信" },
+                  { step: "3", text: "スクショを送るだけで自動記録開始" },
+                ].map((s) => (
+                  <div key={s.step} className="flex items-center gap-3 text-xs">
+                    <span className="w-6 h-6 rounded-full bg-brand-500 text-white font-bold flex items-center justify-center text-[11px]">
+                      {s.step}
+                    </span>
+                    <span className="text-ink-700">{s.text}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <Button
+            variant="primary"
+            size="lg"
+            className="w-full"
+            iconRight="chevron-right"
+            onClick={() => router.replace(`/client/${clientId}`)}
+          >
+            ダッシュボードを開く
+          </Button>
+        </div>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-[#0a0f1e] flex flex-col items-center justify-center p-6">
-      <div className="w-full max-w-sm space-y-6">
-        <div className="text-center space-y-2">
-          <Logo size="sm" variant="full" theme="dark" />
-          <p className="text-slate-400 text-sm pt-2">
-            <span className="text-white font-bold">{trainerName}</span> さんから招待されました
+    <main className="min-h-screen bg-ink-50 flex flex-col items-center justify-center p-5">
+      <div className="w-full max-w-md space-y-6">
+        <div className="text-center">
+          <div className="flex justify-center mb-4">
+            <Logo />
+          </div>
+          <p className="text-sm text-ink-500">
+            <span className="text-ink-800 font-bold">{trainerName}</span>{" "}
+            さんから招待されました
           </p>
         </div>
 
-        <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
-          <div>
-            <p className="text-xs font-bold text-blue-400 uppercase tracking-widest mb-1">Client Fit とは</p>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              あすけん・STRONG・タニタ等のスクショをLINEに送るだけで、食事・体重・トレーニングが自動記録されます。AIがデータを統合分析してトレーナーが指導できます。
-            </p>
+        <div className="bg-white rounded-2xl shadow-card border border-ink-200/70 p-5">
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center shrink-0">
+              <Icon name="info" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-ink-800">Client Fit とは</p>
+              <p className="text-xs text-ink-500 leading-relaxed mt-1">
+                あすけん・STRONG・タニタ等のスクショをLINEに送るだけで、食事・体重・トレーニングが自動記録されます。
+              </p>
+            </div>
           </div>
         </div>
 
-        <div className="space-y-3">
-          <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1.5">あなたのお名前</label>
-            <input
+        <div className="bg-white rounded-2xl shadow-card border border-ink-200/70 p-5 space-y-4">
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold text-ink-700">
+              あなたのお名前
+            </label>
+            <Input
               type="text"
               value={clientName}
               onChange={(e) => setClientName(e.target.value)}
               placeholder="例: 田中 花子"
               autoFocus
-              className="w-full bg-white/5 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:border-blue-500/60 transition-all text-sm"
+              icon="user-plus"
             />
           </div>
 
           {error && (
-            <p className="text-rose-400 text-xs text-center bg-rose-500/10 border border-rose-500/20 rounded-xl px-4 py-2">
-              {error}
-            </p>
+            <div className="flex items-start gap-2 bg-red-50 border border-red-100 rounded-xl px-3 py-2.5">
+              <Icon name="alert-circle" className="text-red-600 mt-0.5" />
+              <p className="text-xs text-red-700">{error}</p>
+            </div>
           )}
 
-          <button
-            type="button"
+          <Button
+            variant="primary"
+            size="lg"
+            className="w-full"
+            loading={saving}
+            disabled={!clientName.trim()}
+            iconRight="chevron-right"
             onClick={handleJoin}
-            disabled={saving || !clientName.trim()}
-            className="w-full bg-blue-500 hover:bg-blue-400 disabled:bg-white/10 disabled:text-slate-600 text-white font-bold py-4 rounded-2xl text-sm transition-colors"
           >
-            {saving ? "登録中..." : "登録して始める →"}
-          </button>
-
-          <p className="text-center text-[10px] text-slate-600">
-            登録することで利用規約・プライバシーポリシーに同意したものとみなします
-          </p>
+            {saving ? "登録中..." : "登録して始める"}
+          </Button>
         </div>
+
+        <p className="text-center text-[10px] text-ink-400">
+          登録することで利用規約・プライバシーポリシーに同意したものとみなします
+        </p>
       </div>
     </main>
   );

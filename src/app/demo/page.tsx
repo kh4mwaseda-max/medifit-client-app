@@ -24,8 +24,8 @@ export default async function DemoPage() {
 
   return (
     <div>
-      <div className="bg-blue-600 px-4 py-2 text-center print:hidden">
-        <p className="text-white text-[11px] font-medium">
+      <div className="bg-grad-brand px-4 py-2 text-center print:hidden">
+        <p className="text-white text-[11px] font-bold">
           🎯 デモページ — テスト太郎のリアルデータを表示しています
         </p>
       </div>

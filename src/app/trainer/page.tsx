@@ -2,291 +2,265 @@ export const dynamic = "force-dynamic";
 
 import { createServerClient } from "@/lib/supabase";
 import { getTrainerId } from "@/lib/trainer-auth";
+import { getImageCount } from "@/lib/line-usage";
 import { redirect } from "next/navigation";
-import Link from "next/link";
-import LogoutButton from "./LogoutButton";
-import InviteButton from "./InviteButton";
-import { formatDate } from "@/lib/utils";
-import Logo from "@/components/Logo";
+import { TrainerShell } from "@/components/cf/TrainerShell";
+import { DashboardView } from "./DashboardView";
 
-export default async function TrainerDashboard() {
+function todayLabel(): string {
+  const d = new Date();
+  const week = ["日", "月", "火", "水", "木", "金", "土"][d.getDay()];
+  return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日（${week}）`;
+}
+
+function hoursBetween(iso: string | null, now: Date): number {
+  if (!iso) return 9999;
+  const t = new Date(iso).getTime();
+  return Math.max(0, Math.floor((now.getTime() - t) / 36e5));
+}
+
+export default async function TrainerDashboardPage() {
   const trainerId = await getTrainerId();
   if (!trainerId) redirect("/trainer/login");
 
   const supabase = createServerClient();
+  const now = new Date();
+  const startOfToday = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+  ).toISOString();
+  const fourteenDaysAgo = new Date(
+    now.getTime() - 14 * 24 * 3600 * 1000,
+  ).toISOString();
 
-  const [clientsRes, trainerRes] = await Promise.all([
-    supabase
-      .from("clients")
-      .select("id, name, goal, start_date, onboarding_step, line_user_id")
-      .eq("trainer_id", trainerId)
-      .order("created_at", { ascending: false }),
+  const [trainerRes, clientsRes, lineCount] = await Promise.all([
     supabase
       .from("trainers")
-      .select("name, plan")
+      .select("name, email, plan")
       .eq("id", trainerId)
       .single(),
+    supabase
+      .from("clients")
+      .select("id, name, goal, start_date, line_user_id, created_at")
+      .eq("trainer_id", trainerId)
+      .order("created_at", { ascending: false }),
+    getImageCount(trainerId),
   ]);
 
-  const allClients = clientsRes.data ?? [];
-  const trainer = trainerRes.data;
+  const clients = clientsRes.data ?? [];
+  const trainer = trainerRes.data ?? { name: "トレーナー", email: "", plan: "free" };
+  const clientIds = clients.map((c) => c.id);
 
-  // 最終活動日を並列取得（body_records + training_sessions の最新日）
-  const clientIds = allClients.map((c) => c.id);
-  let lastActivityMap: Record<string, string> = {};
-  if (clientIds.length > 0) {
-    const [bodyRes, trainingRes] = await Promise.all([
-      supabase
-        .from("body_records")
-        .select("client_id, recorded_at")
-        .in("client_id", clientIds)
-        .order("recorded_at", { ascending: false }),
-      supabase
-        .from("training_sessions")
-        .select("client_id, session_date")
-        .in("client_id", clientIds)
-        .order("session_date", { ascending: false }),
-    ]);
-    for (const row of bodyRes.data ?? []) {
-      if (!lastActivityMap[row.client_id]) lastActivityMap[row.client_id] = row.recorded_at;
+  // Body records (latest per client + weight series)
+  const [bodyAllRes, trainingAllRes, mealsTodayRes] = await Promise.all([
+    clientIds.length
+      ? supabase
+          .from("body_records")
+          .select(
+            "client_id, recorded_at, weight_kg, body_fat_pct, muscle_mass_kg",
+          )
+          .in("client_id", clientIds)
+          .order("recorded_at", { ascending: false })
+      : Promise.resolve({ data: [] as Array<{ client_id: string; recorded_at: string; weight_kg: number | null; body_fat_pct: number | null; muscle_mass_kg: number | null }> }),
+    clientIds.length
+      ? supabase
+          .from("training_sessions")
+          .select("id, client_id, session_date, created_at")
+          .in("client_id", clientIds)
+          .gte("created_at", fourteenDaysAgo)
+          .order("created_at", { ascending: false })
+      : Promise.resolve({ data: [] as Array<{ id: string; client_id: string; session_date: string; created_at: string }> }),
+    clientIds.length
+      ? supabase
+          .from("meal_records")
+          .select("client_id, created_at, meal_type, food_name, calories")
+          .in("client_id", clientIds)
+          .gte("created_at", startOfToday)
+          .order("created_at", { ascending: false })
+      : Promise.resolve({ data: [] as Array<{ client_id: string; created_at: string; meal_type: string; food_name: string; calories: number | null }> }),
+  ]);
+
+  const bodyRows = bodyAllRes.data ?? [];
+  const trainingRows = trainingAllRes.data ?? [];
+  const mealsToday = mealsTodayRes.data ?? [];
+
+  // Last activity per client (max of latest body record & training session)
+  const lastActivityAt: Record<string, string> = {};
+  for (const row of bodyRows) {
+    const ca = row.recorded_at;
+    if (!lastActivityAt[row.client_id] || ca > lastActivityAt[row.client_id]) {
+      lastActivityAt[row.client_id] = ca;
     }
-    for (const row of trainingRes.data ?? []) {
-      const d = row.session_date;
-      const existing = lastActivityMap[row.client_id];
-      if (!existing || d > existing) lastActivityMap[row.client_id] = d;
+  }
+  for (const row of trainingRows) {
+    const ca = row.created_at || row.session_date;
+    if (!lastActivityAt[row.client_id] || ca > lastActivityAt[row.client_id]) {
+      lastActivityAt[row.client_id] = ca;
     }
   }
 
-  // 最終活動からの経過日数
-  const today_str = new Date().toISOString().split("T")[0];
-  const daysSinceActivity = (clientId: string, startDate: string) => {
-    const last = lastActivityMap[clientId] ?? startDate ?? today_str;
-    const lastDate = last.slice(0, 10);
-    return Math.floor((new Date(today_str).getTime() - new Date(lastDate).getTime()) / (1000 * 60 * 60 * 24));
+  // Weight series (chronological) + latest weight per client
+  const weightSeriesMap: Record<string, number[]> = {};
+  const latestWeight: Record<string, number | null> = {};
+  const latestBodyFat: Record<string, number | null> = {};
+  const latestMuscle: Record<string, number | null> = {};
+  const firstWeight: Record<string, number | null> = {};
+  for (const row of [...bodyRows].reverse()) {
+    if (row.weight_kg == null) continue;
+    weightSeriesMap[row.client_id] ||= [];
+    weightSeriesMap[row.client_id].push(row.weight_kg);
+    if (firstWeight[row.client_id] == null) firstWeight[row.client_id] = row.weight_kg;
+    latestWeight[row.client_id] = row.weight_kg;
+    if (row.body_fat_pct != null) latestBodyFat[row.client_id] = row.body_fat_pct;
+    if (row.muscle_mass_kg != null) latestMuscle[row.client_id] = row.muscle_mass_kg;
+  }
+
+  // Today's log count (body + training + meals today)
+  const startOfTodayTs = new Date(startOfToday).getTime();
+  const countToday = (iso: string | null) =>
+    iso && new Date(iso).getTime() >= startOfTodayTs ? 1 : 0;
+  let todayLogs = 0;
+  for (const r of bodyRows) todayLogs += countToday(r.recorded_at);
+  for (const r of trainingRows) todayLogs += countToday(r.created_at);
+  todayLogs += mealsToday.length;
+
+  // 14-day volume series: count training sessions per day (we don't have volume yet, so use count*1000 placeholder)
+  const volumeSeries: number[] = new Array(14).fill(0);
+  for (const r of trainingRows) {
+    const d = new Date(r.created_at || r.session_date);
+    const diffDays = Math.floor(
+      (now.getTime() - d.getTime()) / (24 * 3600 * 1000),
+    );
+    if (diffDays >= 0 && diffDays < 14) {
+      volumeSeries[13 - diffDays] += 1;
+    }
+  }
+
+  // Enrich clients with derived fields
+  const enrichedClients = clients.map((c) => {
+    const cur = latestWeight[c.id];
+    const start = firstWeight[c.id];
+    const last = lastActivityAt[c.id] ?? c.created_at;
+    const lastHours = hoursBetween(last, now);
+    const flag: "ok" | "warn" | "alert" =
+      lastHours >= 48 ? "alert" : lastHours >= 30 ? "warn" : "ok";
+    return {
+      id: c.id,
+      name: c.name,
+      goal: c.goal,
+      startKg: start,
+      curKg: cur,
+      bodyFat: latestBodyFat[c.id] ?? null,
+      muscleMass: latestMuscle[c.id] ?? null,
+      lastActiveHours: lastHours,
+      flag,
+      weightSeries: weightSeriesMap[c.id] ?? [],
+      lineLinked: !!c.line_user_id,
+      startDate: c.start_date,
+    };
+  });
+
+  const needsAttention = enrichedClients.filter(
+    (c) => c.flag === "alert" || c.flag === "warn",
+  );
+
+  // Recent activity feed (merge body + training + meals, sort by date desc)
+  type ActivityItem = {
+    id: string;
+    clientId: string;
+    clientName: string;
+    type: "body" | "training" | "meal";
+    label: string;
+    detail: string;
+    at: string;
+    icon: string;
+  };
+  const nameById = Object.fromEntries(clients.map((c) => [c.id, c.name]));
+  const activity: ActivityItem[] = [];
+  for (const r of bodyRows.slice(0, 20)) {
+    if (!nameById[r.client_id]) continue;
+    const parts: string[] = [];
+    if (r.weight_kg != null) parts.push(`${r.weight_kg}kg`);
+    if (r.body_fat_pct != null) parts.push(`体脂肪率 ${r.body_fat_pct}%`);
+    if (r.muscle_mass_kg != null) parts.push(`筋肉量 ${r.muscle_mass_kg}kg`);
+    activity.push({
+      id: `b-${r.client_id}-${r.recorded_at}`,
+      clientId: r.client_id,
+      clientName: nameById[r.client_id],
+      type: "body",
+      label: "体組成を記録",
+      detail: parts.join(" / ") || "記録",
+      at: r.recorded_at,
+      icon: "activity",
+    });
+  }
+  for (const r of trainingRows.slice(0, 20)) {
+    if (!nameById[r.client_id]) continue;
+    activity.push({
+      id: `t-${r.id}`,
+      clientId: r.client_id,
+      clientName: nameById[r.client_id],
+      type: "training",
+      label: "トレーニングを記録",
+      detail: `セッション日 ${r.session_date}`,
+      at: r.created_at || r.session_date,
+      icon: "dumbbell",
+    });
+  }
+  for (const r of mealsToday.slice(0, 20)) {
+    if (!nameById[r.client_id]) continue;
+    const typeLabel =
+      r.meal_type === "breakfast"
+        ? "朝食"
+        : r.meal_type === "lunch"
+          ? "昼食"
+          : r.meal_type === "dinner"
+            ? "夕食"
+            : "間食";
+    activity.push({
+      id: `m-${r.client_id}-${r.created_at}`,
+      clientId: r.client_id,
+      clientName: nameById[r.client_id],
+      type: "meal",
+      label: `${typeLabel}を記録`,
+      detail: `${r.food_name}${r.calories ? ` — ${r.calories}kcal` : ""}`,
+      at: r.created_at,
+      icon: "utensils",
+    });
+  }
+  activity.sort((a, b) => b.at.localeCompare(a.at));
+
+  const stats = {
+    totalClients: clients.length,
+    todayLogs,
+    needsAttention: needsAttention.length,
+    lineUsageUsed: lineCount,
+    lineUsageCap: 300,
   };
 
-  // 要対応（問診完了・プラン未送信）を上に、それ以外は最終活動日順
-  const urgent = allClients.filter((c) => c.onboarding_step === "intake_done");
-  const others = allClients
-    .filter((c) => c.onboarding_step !== "intake_done")
-    .sort((a, b) => {
-      const da = lastActivityMap[a.id] ?? a.start_date ?? "";
-      const db = lastActivityMap[b.id] ?? b.start_date ?? "";
-      return db > da ? 1 : -1;
-    });
-
-  const isPro = trainer?.plan === "pro";
-  const FREE_CLIENTS = 1; // 1名まで無料
-  const paidClients = Math.max(0, allClients.length - FREE_CLIENTS);
-  const canAddMore = true; // 上限なし（2名目から¥500/名/月）
-
-  // 要対応クライアントしかいない場合は、招待/追加/料金/一覧を一旦隠して目標設定に集中させる
-  const focusOnUrgent = urgent.length > 0 && others.length === 0;
-
   return (
-    <div className="min-h-screen bg-slate-50">
-
-      {/* ヘッダー */}
-      <header className="bg-white border-b border-slate-200 px-5 py-3.5 flex items-center justify-between sticky top-0 z-10 shadow-sm">
-        <div className="flex items-center gap-2.5">
-          <Logo size="sm" />
-          <div className="border-l border-slate-200 pl-2.5 ml-0.5">
-            <p className="text-[11px] text-slate-400 leading-none">トレーナー管理</p>
-            {trainer && (
-              <p className="text-[10px] text-slate-600 font-semibold leading-none mt-0.5">
-                {trainer.name}
-                <span className={`ml-1.5 text-[8px] px-1.5 py-0.5 rounded-full font-bold ${isPro ? "bg-blue-100 text-blue-600" : "bg-slate-100 text-slate-500"}`}>
-                  {isPro ? "Pro" : "Free"}
-                </span>
-              </p>
-            )}
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Link href="/trainer/settings" className="text-[11px] text-slate-400 hover:text-slate-600 px-2 py-1.5 rounded-lg hover:bg-slate-100 transition-colors">設定</Link>
-          <LogoutButton />
-        </div>
-      </header>
-
-      <main className="max-w-2xl mx-auto px-4 py-6 space-y-5">
-
-        {/* ── クイックスタッツ ── */}
-        {allClients.length > 0 && !focusOnUrgent && (
-          <div className="grid grid-cols-3 gap-3">
-            <div className="bg-white border border-slate-200 rounded-2xl p-3 text-center shadow-sm">
-              <p className="text-2xl font-black text-slate-800 tabular-nums">{allClients.length}</p>
-              <p className="text-[10px] text-slate-400 mt-0.5">担当クライアント</p>
-            </div>
-            <div className="bg-white border border-slate-200 rounded-2xl p-3 text-center shadow-sm">
-              <p className="text-2xl font-black text-teal-600 tabular-nums">
-                {others.filter(c => daysSinceActivity(c.id, c.start_date) <= 1).length}
-              </p>
-              <p className="text-[10px] text-slate-400 mt-0.5">直近24h活動</p>
-            </div>
-            <div className="bg-white border border-slate-200 rounded-2xl p-3 text-center shadow-sm">
-              <p className="text-2xl font-black text-rose-400 tabular-nums">
-                {others.filter(c => daysSinceActivity(c.id, c.start_date) >= 7).length}
-              </p>
-              <p className="text-[10px] text-slate-400 mt-0.5">要フォロー</p>
-            </div>
-          </div>
-        )}
-
-        {/* ── 朝サマリー案内 ── */}
-        {!focusOnUrgent && others.length > 0 && (
-          <div className="bg-blue-50 border border-blue-200 rounded-2xl px-4 py-3 flex items-start gap-2.5">
-            <span className="text-base">📬</span>
-            <p className="text-[11px] text-blue-700 leading-relaxed">
-              毎朝7時に前日のクライアント記録まとめがLINEに届きます。日中はこの画面から個別に確認できます。
-            </p>
-          </div>
-        )}
-
-        {/* ── 要対応バナー ── */}
-        {urgent.length > 0 && (
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-              <p className="text-xs font-semibold text-amber-700">要対応 — 目標設定が必要です</p>
-            </div>
-            {urgent.map((c) => (
-              <Link
-                key={c.id}
-                href={`/trainer/clients/${c.id}`}
-                className="flex items-center justify-between bg-amber-50 border-2 border-amber-300 rounded-2xl p-4 hover:border-amber-400 transition-all shadow-sm"
-              >
-                <div>
-                  <p className="text-slate-800 font-semibold text-sm">{c.name}</p>
-                  <p className="text-xs text-amber-600 mt-0.5">初回データ入力済み · 目標プランを設定してください</p>
-                </div>
-                <span className="text-amber-500 text-lg">→</span>
-              </Link>
-            ))}
-          </div>
-        )}
-
-        {/* ── クライアント一覧ヘッダー ── */}
-        {!focusOnUrgent && (
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <h2 className="text-slate-700 font-semibold text-sm">クライアント一覧</h2>
-            <span className="text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
-              {allClients.length}名
-            </span>
-            {paidClients > 0 && (
-              <span className="text-[10px] text-blue-500 bg-blue-50 px-2 py-0.5 rounded-full">
-                ¥{(paidClients * 500).toLocaleString()}/月
-              </span>
-            )}
-          </div>
-          {allClients.length > 0 && (
-            <div className="flex items-center gap-2">
-              <InviteButton />
-              <Link
-                href="/trainer/clients/new"
-                className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-4 py-2 rounded-xl transition-colors shadow-sm shadow-blue-100"
-              >
-                + 追加
-              </Link>
-            </div>
-          )}
-        </div>
-        )}
-
-        {/* ── クライアントなし ── */}
-        {focusOnUrgent ? null : allClients.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-5">
-            <div className="text-center space-y-2">
-              <p className="text-3xl">🎉</p>
-              <p className="text-slate-700 font-bold text-sm">LINE連携完了！まずはクライアントを追加しましょう</p>
-              <p className="text-xs text-slate-400">案内文をコピーして送るだけで簡単に始められます</p>
-            </div>
-            <div className="bg-slate-50 rounded-xl p-4 space-y-2.5">
-              <p className="text-xs font-semibold text-slate-500">ここからの流れ</p>
-              {[
-                "「＋追加」でクライアントを登録",
-                "案内文をコピーしてLINEやメールで送信",
-                "クライアントがPINをLINEに送ると自動連携",
-                "クライアントが基礎データを入力すると通知が届く",
-                "アセスメント生成 → 目標設定 → LINEで送信して指導スタート！",
-              ].map((text, i) => (
-                <div key={i} className="flex items-start gap-2.5 text-xs text-slate-600">
-                  <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-600 font-bold text-[10px] flex items-center justify-center flex-none mt-0.5">{i + 1}</span>
-                  <span>{text}</span>
-                </div>
-              ))}
-            </div>
-            <Link
-              href="/trainer/clients/new"
-              className="flex items-center justify-center w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl text-sm transition-colors shadow-sm shadow-blue-100"
-            >
-              + 最初のクライアントを追加する
-            </Link>
-          </div>
-        ) : (
-          <div className="space-y-2.5">
-            {others.map((c) => {
-              const days = daysSinceActivity(c.id, c.start_date);
-              const activityStatus =
-                days <= 1 ? { dot: "bg-teal-400", badge: null } :
-                days <= 3 ? { dot: "bg-amber-400", badge: null } :
-                days <= 7 ? { dot: "bg-orange-400", badge: { label: `${days}日間未記録`, cls: "bg-orange-50 text-orange-500 border-orange-200" } } :
-                            { dot: "bg-rose-400",   badge: { label: `${days}日間未記録`, cls: "bg-rose-50 text-rose-500 border-rose-200" } };
-
-              return (
-              <Link
-                key={c.id}
-                href={`/trainer/clients/${c.id}`}
-                className="flex items-center justify-between bg-white border border-slate-200 rounded-2xl p-4 hover:border-blue-200 hover:shadow-md hover:shadow-blue-50 transition-all shadow-sm"
-              >
-                <div className="flex items-center gap-3">
-                  <div className={`w-2 h-2 rounded-full flex-none ${activityStatus.dot}`} />
-                  <div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <p className="text-slate-800 font-medium text-sm">{c.name}</p>
-                      {!c.line_user_id && (
-                        <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-400 border border-slate-200">LINE未連携</span>
-                      )}
-                      {activityStatus.badge && (
-                        <span className={`text-[9px] px-1.5 py-0.5 rounded-full border font-medium ${activityStatus.badge.cls}`}>{activityStatus.badge.label}</span>
-                      )}
-                    </div>
-                    {c.goal && <p className="text-xs text-slate-400 mt-0.5 line-clamp-1">{c.goal}</p>}
-                  </div>
-                </div>
-                <div className="text-right shrink-0 ml-4 space-y-0.5">
-                  {lastActivityMap[c.id] ? (
-                    <>
-                      <p className="text-[10px] text-slate-400">最終更新</p>
-                      <p className="text-xs text-slate-600 font-medium">{formatDate(lastActivityMap[c.id])}</p>
-                    </>
-                  ) : (
-                    <>
-                      <p className="text-[10px] text-slate-400">開始日</p>
-                      <p className="text-xs text-slate-600 font-medium">{formatDate(c.start_date)}</p>
-                    </>
-                  )}
-                </div>
-              </Link>
-              );
-            })}
-          </div>
-        )}
-
-        {/* ── 料金案内 ── */}
-        {!focusOnUrgent && (
-        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4">
-          <p className="text-xs font-semibold text-slate-600 mb-1.5">料金</p>
-          <div className="flex items-baseline gap-1">
-            <span className="text-sm font-bold text-slate-800">1名まで無料</span>
-            <span className="text-xs text-slate-400">· 2名目から ¥500/名/月</span>
-          </div>
-          {paidClients > 0 && (
-            <p className="text-xs text-blue-600 mt-1">現在 {paidClients}名分 ¥{(paidClients * 500).toLocaleString()}/月が発生します</p>
-          )}
-        </div>
-        )}
-      </main>
-    </div>
+    <TrainerShell
+      active="dashboard"
+      title="ダッシュボード"
+      subtitle={todayLabel()}
+      trainerName={trainer.name}
+      trainerEmail={trainer.email || undefined}
+    >
+      <DashboardView
+        stats={stats}
+        clients={enrichedClients}
+        needsAttention={needsAttention.map((c) => ({
+          clientId: c.id,
+          name: c.name,
+          reason:
+            c.lastActiveHours >= 9999
+              ? "記録なし"
+              : `記録が${c.lastActiveHours}時間停止`,
+        }))}
+        volumeSeries={volumeSeries}
+        activity={activity.slice(0, 8)}
+      />
+    </TrainerShell>
   );
 }

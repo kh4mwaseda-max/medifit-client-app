@@ -11,7 +11,7 @@ import { ja } from "date-fns/locale";
 import BodyChart from "./BodyChart";
 import TrainingChart from "./TrainingChart";
 import MealChart from "./MealChart";
-import PhotoComparison from "./PhotoComparison";
+import PhotoTab from "./PhotoTab";
 import AssessmentCard from "./AssessmentCard";
 import RecommendationPanel from "./RecommendationPanel";
 import { getMockRecommendation, type RecommendationResult, type PHRInput } from "@/lib/recommendation-engine";
@@ -20,6 +20,7 @@ import Logo from "./Logo";
 import DigitalTwin from "./DigitalTwin";
 import { buildWeightCalorieCorrelation, buildSleepRpeCorrelation } from "@/lib/correlation";
 import ShareButton from "./ShareButton";
+import { cn } from "@/components/cf/primitives";
 
 interface Props {
   client: {
@@ -152,23 +153,24 @@ export default function ClientDashboard({
   }
 
   return (
-    <div className="min-h-screen bg-[#f0f4f8] print:bg-white font-sans">
+    <div className="min-h-screen bg-ink-50 print:bg-white font-sans">
 
       {/* ══ ヘッダー ══════════════════════════════════════════════ */}
-      <header className="bg-white border-b border-slate-200 px-4 py-3 sticky top-0 z-20 shadow-sm print:shadow-none">
+      <header className="bg-white border-b border-ink-200 px-4 py-3 sticky top-0 z-20 shadow-card print:shadow-none">
         <div className="max-w-2xl mx-auto flex items-center justify-between">
           <Logo size="sm" />
           <div className="flex items-center gap-3">
             <div className="text-right">
-              <p className="text-[9px] text-slate-400 leading-none">START DAY</p>
-              <p className="text-lg font-black text-blue-600 leading-none tabular-nums">
-                {dayCount}<span className="text-xs font-normal text-slate-400 ml-0.5">d</span>
+              <p className="text-[9px] text-ink-400 font-medium leading-none uppercase tracking-widest">Start Day</p>
+              <p className="text-lg font-black text-brand-600 leading-none font-mono tracking-tight mt-0.5">
+                {dayCount}<span className="text-xs font-normal text-ink-400 ml-0.5">d</span>
               </p>
             </div>
             <button
               type="button"
               onClick={() => window.print()}
-              className="print:hidden px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-400 text-[11px] font-medium transition-colors"
+              aria-label="PDF出力"
+              className="print:hidden px-3 py-1.5 rounded-xl bg-ink-100 hover:bg-ink-200 text-ink-500 text-[11px] font-semibold transition-colors"
             >
               PDF
             </button>
@@ -177,22 +179,22 @@ export default function ClientDashboard({
       </header>
 
       {/* ══ クライアントバー ══════════════════════════════════════ */}
-      <div className="print:hidden bg-white border-b border-slate-100 px-4 py-2.5">
+      <div className="print:hidden bg-white border-b border-ink-100 px-4 py-2.5">
         <div className="max-w-2xl mx-auto">
-          <p className="text-slate-800 font-semibold text-sm">
+          <p className="text-ink-800 font-bold text-sm">
             {client.name}
-            <span className="text-slate-400 font-normal text-xs ml-1.5">さんの健康ダッシュボード</span>
+            <span className="text-ink-400 font-normal text-xs ml-1.5">さんの健康ダッシュボード</span>
           </p>
           {client.goal && (
-            <p className="text-[11px] text-slate-500 mt-0.5 flex items-center gap-1">
-              <span className="text-blue-400">▸</span>{client.goal}
+            <p className="text-[11px] text-ink-500 mt-0.5 flex items-center gap-1">
+              <span className="text-brand-500">▸</span>{client.goal}
             </p>
           )}
         </div>
       </div>
 
       {/* ══ タブナビ（4タブ） ════════════════════════════════════ */}
-      <nav className="print:hidden bg-white border-b border-slate-200 px-2 sticky top-[57px] z-10">
+      <nav className="print:hidden bg-white border-b border-ink-200 px-2 sticky top-[57px] z-10">
         <div className="max-w-2xl mx-auto flex">
           {TABS.map(({ id, icon, label }) => {
             const active = activeTab === id;
@@ -201,11 +203,12 @@ export default function ClientDashboard({
                 key={id}
                 type="button"
                 onClick={() => setActiveTab(id)}
-                className={`flex-1 flex items-center justify-center gap-1 py-2.5 text-[12px] font-medium transition-all border-b-2 ${
+                className={cn(
+                  "flex-1 flex items-center justify-center gap-1 py-2.5 text-[12px] font-semibold transition-all border-b-2 relative",
                   active
-                    ? "text-blue-600 border-blue-600"
-                    : "text-slate-400 border-transparent hover:text-slate-600"
-                }`}
+                    ? "text-brand-600 border-brand-500"
+                    : "text-ink-400 border-transparent hover:text-ink-700",
+                )}
               >
                 <span className="text-base leading-none">{icon}</span>
                 <span>{label}</span>
@@ -223,16 +226,16 @@ export default function ClientDashboard({
 
           {/* ① トレーナーからのメッセージ */}
           {(goals?.roadmap_text || goals?.trainer_notes) && (
-            <div className="bg-gradient-to-r from-indigo-50 to-blue-50 border border-blue-100 rounded-2xl p-4 shadow-sm">
+            <div className="bg-brand-50 border border-brand-100 rounded-2xl p-4 shadow-card">
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-base">💬</span>
-                <p className="text-xs font-semibold text-blue-700">トレーナーからのメッセージ</p>
+                <p className="text-xs font-bold text-brand-700">トレーナーからのメッセージ</p>
               </div>
               {goals?.roadmap_text && (
-                <p className="text-sm text-slate-700 whitespace-pre-line leading-relaxed">{goals.roadmap_text}</p>
+                <p className="text-sm text-ink-700 whitespace-pre-line leading-relaxed">{goals.roadmap_text}</p>
               )}
               {goals?.trainer_notes && goals.trainer_notes !== goals.roadmap_text && (
-                <p className="text-xs text-slate-500 mt-2 whitespace-pre-line">{goals.trainer_notes}</p>
+                <p className="text-xs text-ink-500 mt-2 whitespace-pre-line">{goals.trainer_notes}</p>
               )}
             </div>
           )}
@@ -240,16 +243,17 @@ export default function ClientDashboard({
           {/* ② 今日の3枚KPIカード（ファーストビュー） */}
           <div className="grid grid-cols-3 gap-2">
             {/* 体重カード */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-3 text-center">
-              <p className="text-[10px] text-slate-400 mb-1">今日の体重</p>
-              <p className="text-xl font-bold text-slate-800 tabular-nums">
+            <div className="bg-white rounded-2xl border border-ink-200/70 shadow-card p-3 text-center">
+              <p className="text-[10px] text-ink-500 font-medium mb-1">今日の体重</p>
+              <p className="text-xl font-black text-ink-800 font-mono tracking-tight">
                 {todayBody?.weight_kg ?? "—"}
               </p>
-              <p className="text-[10px] text-slate-400">kg</p>
+              <p className="text-[10px] text-ink-400">kg</p>
               {prevBody?.weight_kg && todayBody?.weight_kg && (
-                <p className={`text-xs font-medium mt-1 ${
-                  todayBody.weight_kg < prevBody.weight_kg ? "text-teal-500" : "text-rose-400"
-                }`}>
+                <p className={cn(
+                  "text-xs font-bold mt-1",
+                  todayBody.weight_kg < prevBody.weight_kg ? "text-emerald-600" : "text-red-500",
+                )}>
                   {todayBody.weight_kg > prevBody.weight_kg ? "+" : ""}
                   {(todayBody.weight_kg - prevBody.weight_kg).toFixed(1)}
                 </p>
@@ -257,18 +261,18 @@ export default function ClientDashboard({
             </div>
 
             {/* タンパク質カード */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-3 text-center">
-              <p className="text-[10px] text-slate-400 mb-1">P達成率</p>
-              <p className="text-xl font-bold text-slate-800 tabular-nums">
+            <div className="bg-white rounded-2xl border border-ink-200/70 shadow-card p-3 text-center">
+              <p className="text-[10px] text-ink-500 font-medium mb-1">P達成率</p>
+              <p className="text-xl font-black text-ink-800 font-mono tracking-tight">
                 {todayMeals.length > 0 && proteinGoal > 0
                   ? Math.round((todayProtein / proteinGoal) * 100)
                   : "—"}
               </p>
-              <p className="text-[10px] text-slate-400">%</p>
+              <p className="text-[10px] text-ink-400">%</p>
               {todayMeals.length > 0 && (
-                <div className="mt-1 h-1 bg-slate-100 rounded-full overflow-hidden">
+                <div className="mt-1 h-1 bg-ink-100 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-teal-400 rounded-full"
+                    className="h-full bg-emerald-500 rounded-full transition-all"
                     style={{ width: `${Math.min(100, (todayProtein / proteinGoal) * 100)}%` }}
                   />
                 </div>
@@ -276,14 +280,15 @@ export default function ClientDashboard({
             </div>
 
             {/* トレーニングカード */}
-            <div className={`rounded-2xl border shadow-sm p-3 text-center ${
-              todaySession ? "bg-teal-50 border-teal-100" : "bg-white border-slate-200"
-            }`}>
-              <p className="text-[10px] text-slate-400 mb-1">今日のトレ</p>
-              <p className={`text-xl font-bold ${todaySession ? "text-teal-600" : "text-slate-300"}`}>
+            <div className={cn(
+              "rounded-2xl border shadow-card p-3 text-center",
+              todaySession ? "bg-emerald-50 border-emerald-100" : "bg-white border-ink-200/70",
+            )}>
+              <p className="text-[10px] text-ink-500 font-medium mb-1">今日のトレ</p>
+              <p className={cn("text-xl font-black", todaySession ? "text-emerald-600" : "text-ink-300")}>
                 {todaySession ? "✓" : "—"}
               </p>
-              <p className={`text-[10px] mt-1 ${todaySession ? "text-teal-500" : "text-slate-400"}`}>
+              <p className={cn("text-[10px] mt-1 font-medium", todaySession ? "text-emerald-600" : "text-ink-400")}>
                 {todaySession ? "実施済み" : "未記録"}
               </p>
             </div>
@@ -332,25 +337,25 @@ export default function ClientDashboard({
 
           {/* ④ 体重 × カロリー収支 相関グラフ（Client Fit差別化の核） */}
           {weightCalorieData.length >= 3 && (
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
+            <div className="bg-white rounded-2xl border border-ink-200/70 shadow-card p-4">
               <div className="flex items-center justify-between mb-1">
-                <p className="text-xs font-semibold text-slate-500 flex items-center gap-1">
+                <p className="text-xs font-bold text-ink-600 flex items-center gap-1">
                   <span>📊</span> 体重 × カロリー収支
                 </p>
                 <div className="flex items-center gap-2">
-                  <p className="text-[9px] text-slate-400">統合分析</p>
+                  <p className="text-[9px] text-ink-400">統合分析</p>
                   <ShareButton
                     targetId="chart-weight-calorie"
                     shareText={`【Client Fit記録】${client.name}の体重×カロリー収支グラフ`}
                   />
                 </div>
               </div>
-              <p className="text-[9px] text-slate-400 mb-3">
+              <p className="text-[9px] text-ink-400 mb-3">
                 <span className="inline-flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-blue-500 inline-block" />青線 = 体重(kg)
+                  <span className="w-2 h-2 rounded-full bg-brand-500 inline-block" />青線 = 体重(kg)
                 </span>
                 <span className="ml-3 inline-flex items-center gap-1">
-                  <span className="w-2 h-2 rounded bg-blue-100 inline-block" />
+                  <span className="w-2 h-2 rounded bg-brand-100 inline-block" />
                   青棒 = カロリー収支(kcal)
                 </span>
               </p>
@@ -403,7 +408,7 @@ export default function ClientDashboard({
                 </ComposedChart>
               </ResponsiveContainer>
               </div>
-              <p className="text-[10px] text-slate-400 mt-2">
+              <p className="text-[10px] text-ink-400 mt-2">
                 💡 カロリーが少ない週に体重が下がる傾向を確認できます
               </p>
             </div>
@@ -429,13 +434,13 @@ export default function ClientDashboard({
               <button
                 type="button"
                 onClick={() => setActiveTab("AI")}
-                className="w-full bg-gradient-to-r from-blue-600 to-blue-500 rounded-2xl p-4 text-left shadow-sm hover:shadow-md transition-all"
+                className="w-full bg-grad-brand rounded-2xl p-4 text-left shadow-card hover:shadow-pop transition-all"
               >
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between text-white">
                   <div>
-                    <p className="text-[10px] font-bold text-blue-200 uppercase tracking-widest">AI分析</p>
-                    <p className="text-sm font-bold text-white mt-0.5">AIアセスメントを生成する</p>
-                    <p className="text-[11px] text-blue-200 mt-0.5">食事・体重・トレーニングを統合分析して改善提案を表示</p>
+                    <p className="text-[10px] font-bold text-white/80 uppercase tracking-widest">AI分析</p>
+                    <p className="text-sm font-bold mt-0.5">AIアセスメントを生成する</p>
+                    <p className="text-[11px] text-white/80 mt-0.5">食事・体重・トレーニングを統合分析して改善提案を表示</p>
                   </div>
                   <span className="text-2xl">✦</span>
                 </div>
@@ -450,17 +455,17 @@ export default function ClientDashboard({
           {/* 身体データ */}
           <section>
             <div className="flex items-center justify-between px-1 mb-2">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">身体データ</p>
+              <p className="text-[10px] font-bold text-ink-500 uppercase tracking-widest">身体データ</p>
               <ShareButton
                 targetId="chart-body"
                 shareText={`【Client Fit記録】${client.name}の体重推移グラフ`}
               />
             </div>
-            <div id="chart-body" className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm">
+            <div id="chart-body" className="bg-white rounded-2xl p-4 border border-ink-200/70 shadow-card">
               <BodyChart records={bodyRecords} />
             </div>
             {latestBody && (
-              <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm mt-2">
+              <div className="bg-white rounded-2xl p-4 border border-ink-200/70 shadow-card mt-2">
                 <BodyMetricsGrid record={latestBody} goals={goals} inline />
               </div>
             )}
@@ -468,16 +473,16 @@ export default function ClientDashboard({
 
           {/* トレーニング */}
           <section>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 px-1">トレーニング</p>
-            <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm">
+            <p className="text-[10px] font-bold text-ink-500 uppercase tracking-widest mb-2 px-1">トレーニング</p>
+            <div className="bg-white rounded-2xl p-4 border border-ink-200/70 shadow-card">
               <TrainingChart sessions={trainingSessions} />
             </div>
           </section>
 
           {/* 食事 */}
           <section>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 px-1">食事・栄養</p>
-            <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm">
+            <p className="text-[10px] font-bold text-ink-500 uppercase tracking-widest mb-2 px-1">食事・栄養</p>
+            <div className="bg-white rounded-2xl p-4 border border-ink-200/70 shadow-card">
               <MealChart records={mealRecords} />
             </div>
             {avgCalories != null && (
@@ -490,10 +495,10 @@ export default function ClientDashboard({
           {/* 睡眠 × 翌日RPE 相関（データがあれば） */}
           {sleepRpeData.length >= 4 && (
             <section>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 px-1">相関分析</p>
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
-                <p className="text-xs font-semibold text-slate-500 mb-1">睡眠時間 × 翌日RPE</p>
-                <p className="text-[9px] text-slate-400 mb-3">睡眠不足がトレーニング強度に影響しているか確認</p>
+              <p className="text-[10px] font-bold text-ink-500 uppercase tracking-widest mb-2 px-1">相関分析</p>
+              <div className="bg-white rounded-2xl border border-ink-200/70 shadow-card p-4">
+                <p className="text-xs font-bold text-ink-600 mb-1">睡眠時間 × 翌日RPE</p>
+                <p className="text-[9px] text-ink-400 mb-3">睡眠不足がトレーニング強度に影響しているか確認</p>
                 <ResponsiveContainer width="100%" height={160}>
                   <ScatterChart>
                     <XAxis
@@ -528,9 +533,7 @@ export default function ClientDashboard({
 
         {/* ── フォトタブ ── */}
         <div className={activeTab === "フォト" ? "block" : "hidden"}>
-          <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm">
-            <PhotoComparison photos={bodyPhotos} />
-          </div>
+          <PhotoTab clientId={client.id} initialPhotos={bodyPhotos} />
         </div>
 
         {/* ── AIタブ（分析 + 提案） ── */}
@@ -538,8 +541,8 @@ export default function ClientDashboard({
 
           {/* AI分析 */}
           <section>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 px-1">AIアセスメント</p>
-            <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm">
+            <p className="text-[10px] font-bold text-ink-500 uppercase tracking-widest mb-2 px-1">AIアセスメント</p>
+            <div className="bg-white rounded-2xl p-4 border border-ink-200/70 shadow-card">
               <AssessmentCard assessment={assessment} clientId={client.id} />
             </div>
           </section>
@@ -547,10 +550,10 @@ export default function ClientDashboard({
           {/* AI提案 */}
           <section>
             <div className="flex items-center justify-between mb-2 px-1">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">AI提案</p>
+              <p className="text-[10px] font-bold text-ink-500 uppercase tracking-widest">AI提案</p>
               <div className="flex items-center gap-2">
                 {recommendation && (
-                  <p className="text-[10px] text-slate-400">
+                  <p className="text-[10px] text-ink-400">
                     {new Date(recommendation.generated_at).toLocaleString("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}
                   </p>
                 )}
@@ -558,7 +561,7 @@ export default function ClientDashboard({
                   type="button"
                   onClick={handleGenerateRecommendation}
                   disabled={recLoading}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white text-[11px] font-semibold rounded-xl transition-colors shadow-sm"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-500 hover:bg-brand-600 disabled:bg-brand-300 text-white text-[11px] font-bold rounded-xl transition-colors shadow-card"
                 >
                   {recLoading
                     ? <><span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" /><span>分析中...</span></>
@@ -568,11 +571,11 @@ export default function ClientDashboard({
               </div>
             </div>
             {recError && (
-              <div className="bg-rose-50 border border-rose-200 rounded-xl px-4 py-3 text-xs text-rose-600 mb-2">
+              <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-xs text-red-700 mb-2">
                 {recError}
               </div>
             )}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="bg-white rounded-2xl border border-ink-200/70 shadow-card overflow-hidden">
               <RecommendationPanel recommendation={recommendation} isLoading={recLoading} />
             </div>
           </section>
@@ -601,15 +604,15 @@ function ReferralBanner({ clientId }: { clientId: string }) {
   };
 
   return (
-    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-2xl p-4 flex items-center justify-between gap-3 print:hidden">
+    <div className="bg-brand-50 border border-brand-100 rounded-2xl p-4 flex items-center justify-between gap-3 print:hidden shadow-card">
       <div>
-        <p className="text-xs font-bold text-blue-700">友達に紹介する</p>
-        <p className="text-[10px] text-slate-500 mt-0.5">Client Fitを使っている友達・仲間を招待しよう</p>
+        <p className="text-xs font-bold text-brand-700">友達に紹介する</p>
+        <p className="text-[10px] text-ink-500 mt-0.5">Client Fitを使っている友達・仲間を招待しよう</p>
       </div>
       <button
         type="button"
         onClick={copy}
-        className="flex-none text-[11px] font-bold bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl transition-colors whitespace-nowrap"
+        className="flex-none text-[11px] font-bold bg-brand-500 hover:bg-brand-600 text-white px-4 py-2 rounded-xl transition-colors whitespace-nowrap shadow-glow"
       >
         {copied ? "✓ コピー済み" : "🔗 リンクをコピー"}
       </button>
@@ -639,19 +642,19 @@ function ProgressHeroCard({
     ? +(latestBody.weight_kg - goals.target_weight_kg).toFixed(1) : null;
 
   return (
-    <div className="bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-700 rounded-2xl p-5 shadow-sm text-white">
+    <div className="bg-grad-brand rounded-2xl p-5 shadow-pop text-white">
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-[10px] text-blue-200 uppercase tracking-widest font-semibold">開始からの変化</p>
+          <p className="text-[10px] text-white/80 uppercase tracking-widest font-bold">開始からの変化</p>
           {weightDiff != null && (
             <div className="flex items-baseline gap-1 mt-1">
-              <span className="text-6xl font-black tabular-nums leading-none">
+              <span className="text-6xl font-black font-mono tracking-tight leading-none">
                 {weightDiff > 0 ? "+" : ""}{weightDiff}
               </span>
-              <span className="text-xl text-blue-200 font-semibold">kg</span>
+              <span className="text-xl text-white/80 font-bold">kg</span>
             </div>
           )}
-          <p className="text-[11px] text-blue-200 mt-2">
+          <p className="text-[11px] text-white/80 mt-2">
             {dayCount}日間 · スタート {firstBody.weight_kg}kg → 現在 {latestBody.weight_kg}kg
           </p>
           {remainingKg != null && Math.abs(remainingKg) > 0.1 && (
@@ -663,19 +666,19 @@ function ProgressHeroCard({
         <div className="space-y-3 text-right">
           {fatDiff != null && (
             <div>
-              <p className="text-[9px] text-blue-300">体脂肪率</p>
-              <p className={`text-2xl font-black tabular-nums ${fatDiff < 0 ? "text-teal-300" : "text-rose-300"}`}>
+              <p className="text-[9px] text-white/70">体脂肪率</p>
+              <p className={cn("text-2xl font-black font-mono tracking-tight", fatDiff < 0 ? "text-emerald-200" : "text-red-200")}>
                 {fatDiff > 0 ? "+" : ""}{fatDiff}
-                <span className="text-xs font-normal text-blue-200">%</span>
+                <span className="text-xs font-normal text-white/80">%</span>
               </p>
             </div>
           )}
           {muscleDiff != null && (
             <div>
-              <p className="text-[9px] text-blue-300">筋肉量</p>
-              <p className={`text-2xl font-black tabular-nums ${muscleDiff > 0 ? "text-teal-300" : "text-rose-300"}`}>
+              <p className="text-[9px] text-white/70">筋肉量</p>
+              <p className={cn("text-2xl font-black font-mono tracking-tight", muscleDiff > 0 ? "text-emerald-200" : "text-red-200")}>
                 {muscleDiff > 0 ? "+" : ""}{muscleDiff}
-                <span className="text-xs font-normal text-blue-200">kg</span>
+                <span className="text-xs font-normal text-white/80">kg</span>
               </p>
             </div>
           )}
@@ -716,16 +719,16 @@ function ConditionVolumeChart({
   if (data.length < 3) return null;
 
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+    <div className="bg-white border border-ink-200/70 rounded-2xl p-4 shadow-card">
       <div className="flex items-center justify-between mb-1">
-        <p className="text-xs font-semibold text-slate-500 flex items-center gap-1">
+        <p className="text-xs font-bold text-ink-600 flex items-center gap-1">
           <span>📊</span> コンディション × ボリューム
         </p>
-        <p className="text-[9px] text-slate-400">追い込みすぎチェック</p>
+        <p className="text-[9px] text-ink-400">追い込みすぎチェック</p>
       </div>
-      <p className="text-[9px] text-slate-400 mb-3">
+      <p className="text-[9px] text-ink-400 mb-3">
         <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-violet-500 inline-block" />紫線 = コンディション(0–10)</span>
-        <span className="ml-3 inline-flex items-center gap-1"><span className="w-2 h-2 rounded bg-blue-100 inline-block" />青棒 = トレボリューム(t)</span>
+        <span className="ml-3 inline-flex items-center gap-1"><span className="w-2 h-2 rounded bg-brand-100 inline-block" />青棒 = トレボリューム(t)</span>
       </p>
       <ResponsiveContainer width="100%" height={130}>
         <ComposedChart data={data}>
@@ -779,19 +782,19 @@ function LastSessionCard({ session, allSessions }: { session: any; allSessions: 
   }
 
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+    <div className="bg-white border border-ink-200/70 rounded-2xl p-4 shadow-card">
       <div className="flex items-center justify-between mb-3">
-        <p className="text-xs font-semibold text-slate-500 flex items-center gap-1">
+        <p className="text-xs font-bold text-ink-600 flex items-center gap-1">
           <span>🏋</span> 直近のトレーニング
         </p>
         <div className="text-right">
-          <p className="text-[10px] text-slate-400">
+          <p className="text-[10px] text-ink-400">
             {format(parseISO(session.session_date), "M月d日(E)", { locale: ja })}
           </p>
           {daysSinceSession === 0 ? (
-            <p className="text-[9px] text-teal-500 font-semibold">今日</p>
+            <p className="text-[9px] text-emerald-600 font-bold">今日</p>
           ) : (
-            <p className="text-[9px] text-slate-300">前回から {daysSinceSession}日</p>
+            <p className="text-[9px] text-ink-400">前回から {daysSinceSession}日</p>
           )}
         </div>
       </div>
@@ -804,18 +807,18 @@ function LastSessionCard({ session, allSessions }: { session: any; allSessions: 
           return (
             <div key={exercise} className="flex items-center justify-between">
               <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="text-xs font-medium text-slate-700">{exercise}</span>
-                <span className="text-[10px] text-slate-400">{sets.length}set</span>
+                <span className="text-xs font-semibold text-ink-700">{exercise}</span>
+                <span className="text-[10px] text-ink-400">{sets.length}set</span>
                 {isPR && (
                   <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200">🏆 PR</span>
                 )}
                 {isFirst && (
-                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-500 border border-blue-200">NEW</span>
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-brand-50 text-brand-600 border border-brand-100">NEW</span>
                 )}
               </div>
               <div className="flex gap-3 text-[11px] shrink-0">
-                <span className="text-slate-500">最高 <strong className="text-slate-700">{maxW}kg</strong></span>
-                <span className="text-blue-600 font-semibold">Vol {vol.toLocaleString()}kg</span>
+                <span className="text-ink-500">最高 <strong className="text-ink-700">{maxW}kg</strong></span>
+                <span className="text-brand-600 font-bold">Vol {vol.toLocaleString()}kg</span>
               </div>
             </div>
           );
@@ -849,20 +852,20 @@ function PFCBarCard({ mealRecords, goals }: { mealRecords: any[]; goals: any }) 
     target ? Math.min(120, Math.round((val / target) * 100)) : null;
 
   const bars = [
-    { label: "P タンパク質", val: protein, unit: "g", target: tp, color: "bg-blue-500" },
+    { label: "P タンパク質", val: protein, unit: "g", target: tp, color: "bg-brand-500" },
     { label: "F 脂質",       val: fat,     unit: "g", target: tf, color: "bg-amber-400" },
-    { label: "C 炭水化物",   val: carbs,   unit: "g", target: tc, color: "bg-teal-500" },
+    { label: "C 炭水化物",   val: carbs,   unit: "g", target: tc, color: "bg-emerald-500" },
   ];
 
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+    <div className="bg-white border border-ink-200/70 rounded-2xl p-4 shadow-card">
       <div className="flex items-center justify-between mb-3">
-        <p className="text-xs font-semibold text-slate-500 flex items-center gap-1">
+        <p className="text-xs font-bold text-ink-600 flex items-center gap-1">
           <span>🥗</span> 平均PFC（直近7日）
         </p>
-        <div className="text-[11px] text-slate-500">
+        <div className="text-[11px] text-ink-500">
           {calories} kcal
-          {tkal && <span className="text-slate-300 ml-1">/ 目標 {tkal}</span>}
+          {tkal && <span className="text-ink-400 ml-1">/ 目標 {tkal}</span>}
         </div>
       </div>
       <div className="space-y-2.5">
@@ -871,20 +874,20 @@ function PFCBarCard({ mealRecords, goals }: { mealRecords: any[]; goals: any }) 
           return (
             <div key={label}>
               <div className="flex items-center justify-between mb-1">
-                <span className="text-[11px] text-slate-500">{label}</span>
-                <span className="text-[11px] font-semibold text-slate-700">
+                <span className="text-[11px] text-ink-500">{label}</span>
+                <span className="text-[11px] font-bold text-ink-700">
                   {val}{unit}
-                  {target && <span className="text-[9px] font-normal text-slate-300 ml-1">/ {target}{unit}</span>}
+                  {target && <span className="text-[9px] font-normal text-ink-400 ml-1">/ {target}{unit}</span>}
                 </span>
               </div>
-              <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+              <div className="h-2 bg-ink-100 rounded-full overflow-hidden">
                 <div
                   className={`h-full ${color} rounded-full transition-all`}
                   style={{ width: p != null ? `${Math.min(p, 100)}%` : "0%" }}
                 />
               </div>
               {p != null && (
-                <p className={`text-[9px] mt-0.5 text-right ${p >= 100 ? "text-teal-500" : p >= 70 ? "text-amber-500" : "text-rose-400"}`}>
+                <p className={cn("text-[9px] mt-0.5 text-right font-semibold", p >= 100 ? "text-emerald-600" : p >= 70 ? "text-amber-600" : "text-red-500")}>
                   {p}%
                 </p>
               )}
@@ -914,18 +917,18 @@ function BodyMetricsGrid({ record, goals, inline }: { record: any; goals: any; i
 
   const inner = (
     <>
-      <p className="text-xs font-semibold text-slate-500 mb-3">
+      <p className="text-xs font-bold text-ink-600 mb-3">
         最新計測値 · {format(parseISO(record.recorded_at), "M月d日", { locale: ja })}
       </p>
       <div className="grid grid-cols-2 gap-2">
         {metrics.map(({ label, value, unit, target }) => (
-          <div key={label} className="bg-slate-50 rounded-xl p-2.5 border border-slate-100">
-            <p className="text-[9px] text-slate-400">{label}</p>
-            <p className="text-lg font-black text-slate-800 tabular-nums leading-tight">
-              {value}<span className="text-[9px] font-normal text-slate-400 ml-0.5">{unit}</span>
+          <div key={label} className="bg-ink-50 rounded-xl p-2.5 border border-ink-200/70">
+            <p className="text-[9px] text-ink-500 font-medium">{label}</p>
+            <p className="text-lg font-black text-ink-800 font-mono tracking-tight leading-tight">
+              {value}<span className="text-[9px] font-normal text-ink-400 ml-0.5">{unit}</span>
             </p>
             {target != null && (
-              <p className="text-[9px] text-slate-300">目標 {target}{unit}</p>
+              <p className="text-[9px] text-ink-400">目標 {target}{unit}</p>
             )}
           </div>
         ))}
@@ -936,7 +939,7 @@ function BodyMetricsGrid({ record, goals, inline }: { record: any; goals: any; i
   if (inline) return inner;
 
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm mt-3">
+    <div className="bg-white border border-ink-200/70 rounded-2xl p-4 shadow-card mt-3">
       {inner}
     </div>
   );
@@ -953,33 +956,36 @@ function AssessmentPreviewCard({ assessment, onDetail }: { assessment: any; onDe
   ] as const;
 
   const riskColor: Record<string, string> = {
-    low: "text-teal-500 bg-teal-50 border-teal-200",
-    medium: "text-amber-500 bg-amber-50 border-amber-200",
-    high: "text-rose-500 bg-rose-50 border-rose-200",
+    low: "text-emerald-700 bg-emerald-50 border-emerald-100",
+    medium: "text-amber-700 bg-amber-50 border-amber-100",
+    high: "text-red-700 bg-red-50 border-red-100",
   };
 
   return (
-    <div className="bg-white border border-blue-100 rounded-2xl p-4 shadow-sm">
+    <div className="bg-white border border-brand-100 rounded-2xl p-4 shadow-card">
       <div className="flex items-center justify-between mb-3">
-        <p className="text-xs font-semibold text-blue-600 flex items-center gap-1">
+        <p className="text-xs font-bold text-brand-600 flex items-center gap-1">
           <span>✦</span> AI分析サマリー
         </p>
         <div className="flex gap-1.5">
           {risks.map(({ key, label }) => (
             <span
               key={key}
-              className={`text-[9px] font-semibold px-2 py-0.5 rounded-full border ${riskColor[assessment[key]] ?? "bg-slate-50 text-slate-400 border-slate-200"}`}
+              className={cn(
+                "text-[9px] font-bold px-2 py-0.5 rounded-full border",
+                riskColor[assessment[key]] ?? "bg-ink-100 text-ink-500 border-ink-200",
+              )}
             >
               {label}
             </span>
           ))}
         </div>
       </div>
-      <p className="text-xs text-slate-600 leading-relaxed line-clamp-3">{assessment.current_summary}</p>
+      <p className="text-xs text-ink-700 leading-relaxed line-clamp-3">{assessment.current_summary}</p>
       <button
         type="button"
         onClick={onDetail}
-        className="mt-2 text-[11px] text-blue-500 hover:text-blue-700 font-medium transition-colors"
+        className="mt-2 text-[11px] text-brand-600 hover:text-brand-700 font-bold transition-colors"
       >
         詳細を見る →
       </button>

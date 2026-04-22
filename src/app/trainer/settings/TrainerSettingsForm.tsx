@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { Button, Input, Icon, Badge, cn } from "@/components/cf/primitives";
 
 const BILLING_ENABLED = process.env.NEXT_PUBLIC_BILLING_ENABLED === "true";
 
@@ -18,7 +19,6 @@ interface Props {
 
 export default function TrainerSettingsForm({ trainer, justUpgraded }: Props) {
   const [name, setName] = useState(trainer.name ?? "");
-  const [notifyId, setNotifyId] = useState(trainer.line_notify_user_id ?? "");
   const [saving, setSaving] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const [upgrading, setUpgrading] = useState(false);
@@ -32,11 +32,13 @@ export default function TrainerSettingsForm({ trainer, justUpgraded }: Props) {
 
   const isPro = trainer.plan === "pro";
 
-  // カウントダウンタイマー
   useEffect(() => {
     if (!lineCodeExpiry) return;
     const interval = setInterval(() => {
-      const remaining = Math.max(0, Math.round((lineCodeExpiry.getTime() - Date.now()) / 1000));
+      const remaining = Math.max(
+        0,
+        Math.round((lineCodeExpiry.getTime() - Date.now()) / 1000),
+      );
       setSecondsLeft(remaining);
       if (remaining === 0) {
         setLineCode(null);
@@ -77,7 +79,10 @@ export default function TrainerSettingsForm({ trainer, justUpgraded }: Props) {
     const res = await fetch("/api/stripe/checkout", { method: "POST" });
     const data = await res.json();
     if (data.url) window.location.href = data.url;
-    else { setStripeError(data.error ?? "エラーが発生しました"); setUpgrading(false); }
+    else {
+      setStripeError(data.error ?? "エラーが発生しました");
+      setUpgrading(false);
+    }
   };
 
   const handlePortal = async () => {
@@ -86,57 +91,110 @@ export default function TrainerSettingsForm({ trainer, justUpgraded }: Props) {
     const res = await fetch("/api/stripe/portal", { method: "POST" });
     const data = await res.json();
     if (data.url) window.location.href = data.url;
-    else { setStripeError(data.error ?? "エラーが発生しました"); setPortalLoading(false); }
+    else {
+      setStripeError(data.error ?? "エラーが発生しました");
+      setPortalLoading(false);
+    }
   };
 
   return (
-    <div className="space-y-4">
-
-      {/* アップグレード完了バナー */}
+    <div className="space-y-5">
       {justUpgraded && BILLING_ENABLED && (
-        <div className="bg-blue-600 text-white rounded-2xl px-5 py-4 flex items-center gap-3 shadow-lg">
-          <span className="text-2xl">🎉</span>
+        <div className="grad-brand rounded-2xl px-5 py-4 text-white flex items-center gap-3 shadow-glow">
+          <div className="text-2xl">🎉</div>
           <div>
-            <p className="font-bold text-sm">Proプランへのアップグレード完了！</p>
-            <p className="text-xs text-blue-200 mt-0.5">クライアント最大10名、AI解析無制限でご利用いただけます</p>
+            <p className="font-bold text-sm">Proプランへのアップグレード完了</p>
+            <p className="text-xs text-white/80 mt-0.5">
+              クライアント最大10名、AI解析無制限でご利用いただけます
+            </p>
           </div>
         </div>
       )}
 
-      {/* ── プランカード ── */}
+      {/* プラン */}
       {BILLING_ENABLED ? (
-        <div className={`rounded-2xl p-5 shadow-sm border ${isPro ? "bg-blue-600 border-blue-700" : "bg-white border-slate-200"}`}>
+        <div
+          className={cn(
+            "rounded-2xl p-5 shadow-card border",
+            isPro
+              ? "grad-brand text-white border-transparent"
+              : "bg-white border-ink-200/70",
+          )}
+        >
           <div className="flex items-start justify-between">
             <div>
-              <p className={`text-xs font-bold uppercase tracking-widest ${isPro ? "text-blue-200" : "text-slate-400"}`}>現在のプラン</p>
-              <p className={`text-2xl font-black mt-1 ${isPro ? "text-white" : "text-slate-800"}`}>{isPro ? "Pro" : "Free"}</p>
-              <p className={`text-xs mt-1 ${isPro ? "text-blue-200" : "text-slate-400"}`}>
-                {isPro ? "クライアント最大10名 · AI解析無制限" : "¥0 · クライアント1名まで"}
+              <p
+                className={cn(
+                  "text-[10px] font-bold uppercase tracking-widest",
+                  isPro ? "text-white/70" : "text-ink-400",
+                )}
+              >
+                現在のプラン
+              </p>
+              <p
+                className={cn(
+                  "text-3xl font-black mt-1 tracking-tight",
+                  isPro ? "text-white" : "text-ink-800",
+                )}
+              >
+                {isPro ? "Pro" : "Free"}
+              </p>
+              <p
+                className={cn(
+                  "text-xs mt-1",
+                  isPro ? "text-white/70" : "text-ink-500",
+                )}
+              >
+                {isPro
+                  ? "クライアント最大10名 · AI解析無制限"
+                  : "¥0 · クライアント1名まで"}
               </p>
             </div>
-            <span className={`text-xs font-bold px-3 py-1.5 rounded-full ${isPro ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"}`}>
+            <span
+              className={cn(
+                "text-[11px] font-bold px-3 py-1 rounded-full",
+                isPro ? "bg-white/20 text-white" : "bg-ink-100 text-ink-600",
+              )}
+            >
               {isPro ? "✦ Pro" : "Free"}
             </span>
           </div>
 
           {!isPro && (
-            <div className="mt-4 space-y-3">
-              <div className="bg-slate-50 rounded-xl p-3 space-y-1">
-                {["クライアント最大10名", "AI解析・レポート無制限", "LINEレポート自動送信", "14日間無料トライアル"].map((f) => (
-                  <div key={f} className="flex items-center gap-1.5 text-xs text-slate-500">
-                    <span className="text-blue-500 font-bold">✓</span>{f}
+            <div className="mt-5 space-y-3">
+              <div className="bg-ink-50 border border-ink-200 rounded-xl p-3 space-y-1.5">
+                {[
+                  "クライアント最大10名",
+                  "AI解析・レポート無制限",
+                  "LINEレポート自動送信",
+                  "14日間無料トライアル",
+                ].map((f) => (
+                  <div
+                    key={f}
+                    className="flex items-center gap-2 text-xs text-ink-600"
+                  >
+                    <Icon
+                      name="check-circle"
+                      className="text-brand-500 shrink-0"
+                    />
+                    {f}
                   </div>
                 ))}
               </div>
-              <button
-                type="button"
+              <Button
+                variant="primary"
+                size="lg"
+                className="w-full"
+                loading={upgrading}
                 onClick={handleUpgrade}
-                disabled={upgrading}
-                className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-bold py-3 rounded-xl text-sm transition-colors"
               >
-                {upgrading ? "リダイレクト中..." : "Proにアップグレード（¥500/月〜）"}
-              </button>
-              <p className="text-center text-xs text-slate-400">14日間無料 · いつでも解約可</p>
+                {upgrading
+                  ? "リダイレクト中..."
+                  : "Proにアップグレード（¥500/月〜）"}
+              </Button>
+              <p className="text-center text-xs text-ink-500">
+                14日間無料 · いつでも解約可
+              </p>
             </div>
           )}
 
@@ -145,133 +203,169 @@ export default function TrainerSettingsForm({ trainer, justUpgraded }: Props) {
               type="button"
               onClick={handlePortal}
               disabled={portalLoading}
-              className="mt-4 w-full bg-white/10 hover:bg-white/20 text-white text-xs font-semibold py-2.5 rounded-xl transition-colors"
+              className="mt-4 w-full bg-white/10 hover:bg-white/20 text-white text-xs font-semibold py-2.5 rounded-xl transition"
             >
               {portalLoading ? "..." : "請求・解約の管理 →"}
             </button>
           )}
         </div>
       ) : (
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-          <p className="text-xs font-bold uppercase tracking-widest text-slate-400">現在のプラン</p>
-          <p className="text-2xl font-black mt-1 text-slate-800">無料ベータ</p>
-          <p className="text-xs text-slate-400 mt-1">全機能を無料でご利用いただけます</p>
+        <div className="bg-white border border-ink-200/70 rounded-2xl p-5 shadow-card">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-ink-400">
+            現在のプラン
+          </p>
+          <p className="text-3xl font-black mt-1 text-ink-800 tracking-tight">
+            無料ベータ
+          </p>
+          <p className="text-xs text-ink-500 mt-1">
+            全機能を無料でご利用いただけます
+          </p>
         </div>
       )}
 
-      {/* ── 基本情報 ── */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-3">
-        <p className="text-xs font-semibold text-slate-500">基本情報</p>
+      {/* 基本情報 */}
+      <div className="bg-white border border-ink-200/70 rounded-2xl p-5 shadow-card space-y-4">
         <div>
-          <label className="block text-xs text-slate-400 mb-1.5">表示名</label>
-          <input
+          <p className="text-sm font-bold text-ink-800">基本情報</p>
+          <p className="text-xs text-ink-500 mt-0.5">
+            表示名はクライアントへのメッセージに使われます
+          </p>
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="block text-xs font-semibold text-ink-700">
+            表示名
+          </label>
+          <Input
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="例: 稲川雅也"
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:border-blue-400 transition-all"
+            icon="user-plus"
           />
         </div>
+
         {trainer.email && (
-          <div>
-            <p className="text-xs text-slate-400">メールアドレス</p>
-            <p className="text-sm text-slate-600 mt-0.5">{trainer.email}</p>
+          <div className="space-y-1">
+            <p className="text-xs font-semibold text-ink-700">
+              メールアドレス
+            </p>
+            <p className="text-sm text-ink-600 bg-ink-50 border border-ink-200 rounded-xl px-3 py-2.5">
+              {trainer.email}
+            </p>
           </div>
         )}
       </div>
 
-      {/* ── LINE通知設定 ── */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-3">
-        <div>
-          <p className="text-xs font-semibold text-slate-500">LINE通知設定</p>
-          <p className="text-xs text-slate-400 mt-0.5">クライアントのスクショ記録時にLINEで通知を受け取れます（任意）</p>
+      {/* LINE通知 */}
+      <div className="bg-white border border-ink-200/70 rounded-2xl p-5 shadow-card space-y-4">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-sm font-bold text-ink-800">LINE通知設定</p>
+            <p className="text-xs text-ink-500 mt-0.5">
+              クライアントのスクショ記録時にLINEで通知を受け取れます（任意）
+            </p>
+          </div>
+          {lineLinked && (
+            <Badge tone="emerald" dot="emerald">
+              連携中
+            </Badge>
+          )}
         </div>
 
         {lineLinked ? (
-          <div className="bg-teal-50 border border-teal-200 rounded-xl p-3 flex items-center gap-2.5">
-            <span className="text-teal-500 text-lg">✓</span>
-            <div>
-              <p className="text-xs font-bold text-teal-700">LINE通知 連携済み</p>
-              <p className="text-xs text-teal-600 mt-0.5">スクショ記録時に通知が届きます</p>
+          <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3 flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
+              <Icon name="check-circle" />
+            </div>
+            <div className="flex-1">
+              <p className="text-xs font-bold text-emerald-800">
+                LINE通知 連携済み
+              </p>
+              <p className="text-[11px] text-emerald-700 mt-0.5">
+                スクショ記録時に通知が届きます
+              </p>
             </div>
             <button
               type="button"
               onClick={() => setLineLinked(false)}
-              className="ml-auto text-[10px] text-slate-400 hover:text-slate-600 transition-colors"
+              className="text-[10px] text-ink-500 hover:text-ink-700 transition"
             >
               解除
             </button>
           </div>
         ) : lineCode ? (
           <div className="space-y-3">
-            {/* ステップインジケーター */}
-            <div className="flex items-center gap-1.5">
-              {[
-                { n: "1", label: "友達追加", done: false },
-                { n: "2", label: "コード送信", done: false },
-                { n: "3", label: "連携完了", done: false },
-              ].map((step, i) => (
-                <div key={i} className="flex items-center gap-1.5">
-                  <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold ${i === 1 ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-400"}`}>
-                    {step.n}
-                  </div>
-                  <span className={`text-[10px] ${i === 1 ? "text-blue-600 font-semibold" : "text-slate-400"}`}>{step.label}</span>
-                  {i < 2 && <span className="text-slate-200 text-xs">›</span>}
-                </div>
-              ))}
-            </div>
-            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-center">
-              <p className="text-xs text-slate-400 mb-2">Client Fit LINEにこのコードを送ってください</p>
-              <p className="text-3xl font-black tracking-[0.3em] text-slate-800 font-mono">{lineCode}</p>
-              <p className="text-xs text-amber-500 mt-2">
-                {Math.floor(secondsLeft / 60)}:{String(secondsLeft % 60).padStart(2, "0")} で失効
+            <div className="bg-brand-50 border-2 border-brand-200 rounded-xl p-5 text-center">
+              <p className="text-xs text-brand-700 font-bold">
+                公式LINEにこのコードを送ってください
+              </p>
+              <p className="text-4xl font-black tracking-[0.3em] text-brand-700 font-mono mt-2">
+                {lineCode}
+              </p>
+              <p className="text-xs text-amber-600 mt-2 font-semibold">
+                {Math.floor(secondsLeft / 60)}:
+                {String(secondsLeft % 60).padStart(2, "0")} で失効
               </p>
             </div>
-            <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 space-y-1.5">
+            <div className="bg-ink-50 border border-ink-200 rounded-xl p-3 space-y-2">
               {[
-                "Client Fit LINE公式を友達追加",
+                "公式LINEを友達追加",
                 "上の6桁コードをそのままLINEに送信",
                 "「連携しました」が届いたら完了",
               ].map((text, i) => (
                 <div key={i} className="flex items-start gap-2">
-                  <span className="w-4 h-4 rounded-full bg-blue-200 text-blue-700 text-[9px] font-bold flex items-center justify-center flex-none mt-0.5">{i + 1}</span>
-                  <p className="text-xs text-blue-600">{text}</p>
+                  <span className="w-5 h-5 rounded-full bg-brand-500 text-white text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">
+                    {i + 1}
+                  </span>
+                  <p className="text-xs text-ink-700">{text}</p>
                 </div>
               ))}
             </div>
           </div>
         ) : (
-          <button
-            type="button"
+          <Button
+            variant="line"
+            size="lg"
+            className="w-full"
+            icon="message-circle"
+            loading={lineCodeGenerating}
             onClick={generateLineCode}
-            disabled={lineCodeGenerating}
-            className="w-full bg-green-500 hover:bg-green-600 disabled:bg-slate-200 disabled:text-slate-400 text-white font-semibold py-3 rounded-xl text-sm transition-colors flex items-center justify-center gap-2"
           >
             {lineCodeGenerating ? "コード生成中..." : "LINE通知を連携する"}
-          </button>
+          </Button>
         )}
       </div>
 
       {stripeError && (
-        <div className="text-sm px-4 py-3 rounded-xl border bg-rose-50 text-rose-600 border-rose-200">
-          {stripeError}
+        <div className="flex items-start gap-2 bg-red-50 border border-red-100 rounded-xl px-3 py-2.5">
+          <Icon name="alert-circle" className="text-red-600 mt-0.5" />
+          <p className="text-xs text-red-700">{stripeError}</p>
         </div>
       )}
 
       {result && (
-        <div className={`text-sm px-4 py-3 rounded-xl border ${result.startsWith("✅") ? "bg-teal-50 text-teal-700 border-teal-200" : "bg-rose-50 text-rose-600 border-rose-200"}`}>
+        <div
+          className={cn(
+            "flex items-center gap-2 rounded-xl px-3 py-2.5 border text-xs",
+            result.startsWith("✅")
+              ? "bg-emerald-50 text-emerald-700 border-emerald-100"
+              : "bg-red-50 text-red-700 border-red-100",
+          )}
+        >
           {result}
         </div>
       )}
 
-      <button
-        type="button"
+      <Button
+        variant="primary"
+        size="lg"
+        className="w-full"
+        loading={saving}
         onClick={handleSave}
-        disabled={saving}
-        className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 text-white font-semibold py-3.5 rounded-2xl transition-colors text-sm"
       >
         {saving ? "保存中..." : "保存する"}
-      </button>
+      </Button>
     </div>
   );
 }
