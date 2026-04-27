@@ -19,9 +19,10 @@ function jstYesterdayDate(): string {
 }
 
 export async function GET(req: NextRequest) {
-  // Vercel Cron 認証
+  // Vercel Cron 認証: CRON_SECRET 未設定は本番で誰でも叩けるリスクがあるため必須化
   const authHeader = req.headers.get("authorization");
-  if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  const cronSecret = process.env.CRON_SECRET;
+  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

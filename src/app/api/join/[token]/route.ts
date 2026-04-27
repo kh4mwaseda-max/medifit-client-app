@@ -97,5 +97,16 @@ export async function POST(
     ).catch(() => {});
   }
 
-  return NextResponse.json({ ok: true, clientId: client.id, pin: client.pin });
+  // 招待リンクからの登録直後はダッシュボード直行で PIN 再入力させない
+  // （招待トークンを握っている時点で本人確認済み）
+  const isProd = process.env.NODE_ENV === "production";
+  const res = NextResponse.json({ ok: true, clientId: client.id, pin: client.pin });
+  res.cookies.set(`client_auth_${client.id}`, "1", {
+    httpOnly: true,
+    secure: isProd,
+    sameSite: "lax",
+    maxAge: 60 * 60 * 24 * 7,
+    path: "/",
+  });
+  return res;
 }

@@ -28,3 +28,20 @@ $$ language plpgsql;
 create trigger trg_line_image_usage_updated_at
   before update on line_image_usage
   for each row execute function update_line_image_usage_updated_at();
+
+-- 画像カウントの原子的インクリメント関数（race condition 防止）
+-- src/lib/line-usage.ts から supabase.rpc("increment_line_image_count", ...) で呼ばれる
+create or replace function increment_line_image_count(p_trainer_id uuid, p_year_month text)
+returns integer as $$
+declare
+  v_count integer;
+begin
+  insert into line_image_usage (trainer_id, year_month, count)
+  values (p_trainer_id, p_year_month, 1)
+  on conflict (trainer_id, year_month) do update
+    set count = line_image_usage.count + 1,
+        updated_at = now()
+  returning count into v_count;
+  return v_count;
+end;
+$$ language plpgsql;
